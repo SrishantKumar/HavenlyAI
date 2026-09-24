@@ -17,9 +17,8 @@ export default function TabsLayout() {
   const colors = isDark ? COLORS.dark : COLORS.light;
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
-
-  const tabHeight = isWeb ? 72 : 62 + insets.bottom;
-  const tabPaddingBottom = isWeb ? 12 : Math.max(insets.bottom, 6);
+  const tabHeight = isWeb ? 84 : Math.max(76, 64 + insets.bottom);
+  const tabPaddingBottom = isWeb ? 16 : Math.max(insets.bottom, 10);
 
   return (
     <Tabs
@@ -35,35 +34,35 @@ export default function TabsLayout() {
           height: tabHeight,
           paddingTop: 8,
           paddingBottom: tabPaddingBottom,
-          elevation: 8,
+          elevation: 10,
         },
         tabBarItemStyle: {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 2,
         },
         tabBarIconStyle: {
-          marginBottom: 4,
+          marginBottom: 2,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          lineHeight: 14,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Sanctuary',
+          title: 'Home',
+          tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <IconHome color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Text',
+          title: 'Chat',
+          tabBarLabel: 'Chat',
           tabBarIcon: ({ color, size }) => <IconMessageCircle color={color} size={22} />,
         }}
       />
@@ -71,6 +70,7 @@ export default function TabsLayout() {
         name="voice"
         options={{
           title: 'Voice',
+          tabBarLabel: 'Voice',
           tabBarIcon: ({ color, size }) => <IconMic color={color} size={22} />,
         }}
       />
@@ -78,6 +78,7 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
+          tabBarLabel: 'History',
           tabBarIcon: ({ color, size }) => <IconHistory color={color} size={22} />,
         }}
       />
@@ -85,6 +86,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => <IconUser color={color} size={22} />,
         }}
       />

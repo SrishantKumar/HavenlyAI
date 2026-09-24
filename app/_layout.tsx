@@ -106,9 +106,28 @@ function MobileShell({ children }: { children: React.ReactNode }) {
   const colors = isDark ? COLORS.dark : COLORS.light;
   const { width } = useWindowDimensions();
 
-  // Inject web reset styles for seamless full-height presentation
+  // Inject web reset styles and ensure favicon & title are set to HavenlyAI logo
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'HavenlyAI';
+
+      let iconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
+      if (!iconLink) {
+        iconLink = document.createElement('link');
+        iconLink.rel = 'shortcut icon';
+        document.head.appendChild(iconLink);
+      }
+      iconLink.type = 'image/png';
+      iconLink.href = '/favicon.png';
+
+      let appleIconLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
+      if (!appleIconLink) {
+        appleIconLink = document.createElement('link');
+        appleIconLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleIconLink);
+      }
+      appleIconLink.href = '/favicon.png';
+
       const styleId = 'havenly-web-mobile-styles';
       let styleTag = document.getElementById(styleId) as HTMLStyleElement | null;
       if (!styleTag) {
@@ -119,6 +138,7 @@ function MobileShell({ children }: { children: React.ReactNode }) {
       styleTag.textContent = `
         html, body, #root {
           height: 100%;
+          height: 100dvh;
           width: 100%;
           margin: 0;
           padding: 0;
