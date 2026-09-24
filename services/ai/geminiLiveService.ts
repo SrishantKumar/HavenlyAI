@@ -1,7 +1,10 @@
 import { Platform } from 'react-native';
 import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { useAppStore } from '../../store/useAppStore';
-import { openRouterService } from './openRouterService';
+import { openRouterService, cleanModelResponse } from './openRouterService';
+import { REALTIME_VOICE_INSTRUCTIONS } from './prompts';
+import { safetyService } from './safetyService';
+import { memoryService } from './memoryService';
 
 export interface GeminiLiveCallbacks {
   onAudioReceived?: (pcm24kHzChunk: ArrayBuffer) => void;
@@ -26,10 +29,6 @@ let activeConversationHistory: { role: 'user' | 'model'; parts: { text: string }
 
 const LIVE_WS_BASE =
   'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
-
-const LIVE_SYSTEM_PROMPT =
-  'You are HavenlyAI, a warm, supportive, and concise companion in a live voice call. ' +
-  'Respond in 1-2 short, natural sentences. Be empathetic and present. Never use markdown.';
 
 const simulatedUserPrompts = [
   "Hi, I've been feeling pretty stressed out today.",
@@ -78,7 +77,7 @@ export const geminiLiveService = {
         setup: {
           model: `models/${AI_CONFIG.liveModel}`,
           generationConfig: { responseModalities: ['TEXT'] },
-          systemInstruction: { parts: [{ text: LIVE_SYSTEM_PROMPT }] },
+          systemInstruction: { parts: [{ text: REALTIME_VOICE_INSTRUCTIONS }] },
         },
       }));
     };
@@ -285,17 +284,75 @@ export const geminiLiveService = {
 
   processUserSpeech(query: string): void {
     if (!speechSessionActive) return;
-    isSpeakingResponse = true;
-    this.callbacks.onTranscriptReceived?.('', 'model');
-    activeConversationHistory.push({ role: 'user', parts: [{ text: query }] });
+    const cleanQuery = (query || '').trim();
+    if (!cleanQuery) return;
 
-    if (liveWs && liveWs.readyState === WebSocket.OPEN) {
-      console.log('Gemini Live WS: Sending user turn:', query);
-      this.sendUserTurnToWS(query);
+    isSpeakingResponse = true;
+
+    // ── Instant Client-Side Safety & Jailbreak Interception ─────────────
+    const lowerQuery = cleanQuery.toLowerCase();
+
+    // A. Jailbreak immunity check
+    const isJailbreak =
+      lowerQuery.includes('ignore previous instructions') ||
+      lowerQuery.includes('ignore all instructions') ||
+      lowerQuery.includes('pretend you are') ||
+      lowerQuery.includes('act as dan') ||
+      lowerQuery.includes('you are now') ||
+      lowerQuery.includes('system prompt') ||
+      lowerQuery.includes('developer mode');
+
+    if (isJailbreak) {
+      const immuneReply = "I'm Haven. I'm here for you, not for that. Is there something you're feeling that you'd like to talk about?";
+      activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+      activeConversationHistory.push({ role: 'model', parts: [{ text: immuneReply }] });
+      this.callbacks.onTranscriptReceived?.(immuneReply, 'model');
+      this.speakTextResponse(immuneReply);
       return;
     }
 
-    this.fetchRestResponse(query);
+    // B. Scope lock check (coding, math, general trivia tasks)
+    const isOutOfScope =
+      lowerQuery.includes('write code') ||
+      lowerQuery.includes('python script') ||
+      lowerQuery.includes('javascript') ||
+      lowerQuery.includes('solve this math') ||
+      lowerQuery.includes('write an essay') ||
+      lowerQuery.includes('recipe for');
+
+    if (isOutOfScope) {
+      const scopeReply = "I'm Haven, and I'm only here to support your emotional well-being. I'm not able to help with that, but I'm always here to listen if something is on your mind.";
+      activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+      activeConversationHistory.push({ role: 'model', parts: [{ text: scopeReply }] });
+      this.callbacks.onTranscriptReceived?.(scopeReply, 'model');
+      this.speakTextResponse(scopeReply);
+      return;
+    }
+
+    // C. Crisis classification
+    const safetyLevel = safetyService.getSafetyLevel(cleanQuery);
+    if (safetyLevel === 'high') {
+      try {
+        useAppStore.getState().setShowSafetySupport(true);
+      } catch (_) {}
+      const crisisReply = "I hear how much pain you're in, and you don't have to carry this alone. Please reach out to emergency services or call 988 right now. I'm right here with you.";
+      activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+      activeConversationHistory.push({ role: 'model', parts: [{ text: crisisReply }] });
+      this.callbacks.onTranscriptReceived?.(crisisReply, 'model');
+      this.speakTextResponse(crisisReply);
+      return;
+    }
+
+    this.callbacks.onTranscriptReceived?.('', 'model');
+    activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+
+    if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+      console.log('Gemini Live WS: Sending user turn:', cleanQuery);
+      this.sendUserTurnToWS(cleanQuery);
+      return;
+    }
+
+    this.fetchRestResponse(cleanQuery);
   },
 
   async fetchRestResponse(query: string): Promise<void> {
@@ -303,20 +360,34 @@ export const geminiLiveService = {
       console.log('Voice dialogue: query:', query);
       let text = '';
 
+      // Prepare contextualized instructions including user's memory profile
+      let instructions = REALTIME_VOICE_INSTRUCTIONS;
+      try {
+        const memoryProfile = await memoryService.getMemoryProfile();
+        if (memoryProfile && memoryProfile.trim()) {
+          instructions += `\n\nUser Context:\n${memoryProfile.trim()}`;
+        }
+      } catch (_) {}
+
+      // Prior conversation history (excluding current query to prevent duplication)
+      const priorHistory = activeConversationHistory
+        .slice(0, -1) // turns before the current user turn
+        .slice(-8)    // keep last 8 turns for conversational continuity
+        .map((turn) => ({
+          role: turn.role,
+          content: turn.parts?.[0]?.text || '',
+        }));
+
       // 1. Try OpenRouter free models first (zero quota cost, high availability)
       if (CONFIG.openRouterApiKey) {
         try {
-          const historyForOpenRouter = activeConversationHistory.slice(-10).map((turn) => ({
-            role: turn.role,
-            content: turn.parts?.[0]?.text || '',
-          }));
           const orResponse = await openRouterService.generateCompletion(
-            LIVE_SYSTEM_PROMPT,
-            historyForOpenRouter,
+            instructions,
+            priorHistory,
             query
           );
           if (orResponse && orResponse.trim()) {
-            text = orResponse.trim();
+            text = cleanModelResponse(orResponse);
           }
         } catch (orErr) {
           console.warn('[OpenRouter] Free model attempt failed, falling back to Gemini:', orErr);
@@ -332,13 +403,18 @@ export const geminiLiveService = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: activeConversationHistory.slice(-10),
-            systemInstruction: { parts: [{ text: LIVE_SYSTEM_PROMPT }] },
+            systemInstruction: { parts: [{ text: instructions }] },
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 250,
+            },
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          const rawGemini = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          text = cleanModelResponse(rawGemini);
         } else {
           const errorText = await res.text();
           console.error(`Gemini REST error (status ${res.status}):`, errorText);
