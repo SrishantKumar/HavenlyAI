@@ -30,7 +30,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         style,
       ]}
     >
-      <View style={[StyleSheet.absoluteFillObject, styles.glowOverlay, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.03)' : 'rgba(99, 102, 241, 0.03)' }]} />
+      <View style={[StyleSheet.absoluteFill, styles.glowOverlay, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.03)' : 'rgba(99, 102, 241, 0.03)' }]} />
       {children}
     </View>
   );

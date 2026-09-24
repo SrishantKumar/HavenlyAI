@@ -5,7 +5,8 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   ViewStyle, 
-  TextStyle 
+  TextStyle,
+  Platform 
 } from 'react-native';
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
@@ -44,6 +45,12 @@ export const Button: React.FC<ButtonProps> = ({
       opacity: disabled || loading ? 0.6 : 1,
       borderWidth: 1,
       borderColor: 'transparent',
+      ...Platform.select({
+        web: {
+          cursor: disabled || loading ? 'not-allowed' : 'pointer',
+          userSelect: 'none',
+        } as any,
+      }),
     };
 
     // Variant mapping
