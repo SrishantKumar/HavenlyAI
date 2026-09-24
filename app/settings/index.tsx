@@ -42,6 +42,10 @@ export default function SettingsScreen() {
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [apiKeyMessage, setApiKeyMessage] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [openRouterKeyInput, setOpenRouterKeyInput] = useState('');
+  const [openRouterKeyStatus, setOpenRouterKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [openRouterKeyMessage, setOpenRouterKeyMessage] = useState('');
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
 
   // Load available SpeechSynthesis voices
   useEffect(() => {
@@ -78,7 +82,58 @@ export default function SettingsScreen() {
     if (key) {
       setApiKeyInput(key);
     }
+    const orKey = CONFIG.openRouterApiKey;
+    if (orKey) {
+      setOpenRouterKeyInput(orKey);
+    }
   }, []);
+
+  const handleSaveOpenRouterKey = async () => {
+    setOpenRouterKeyStatus('testing');
+    setOpenRouterKeyMessage('');
+    const trimmed = openRouterKeyInput.trim();
+    if (!trimmed) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('havenly_openrouter_api_key');
+        }
+        await storage.deleteSecureItem('havenly_openrouter_api_key');
+      } catch (_) {}
+      setOpenRouterKeyStatus('idle');
+      setOpenRouterKeyMessage('OpenRouter key cleared.');
+      return;
+    }
+
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${trimmed}`,
+        },
+        body: JSON.stringify({
+          model: 'openrouter/free',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5,
+        }),
+      });
+
+      if (res.ok) {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('havenly_openrouter_api_key', trimmed);
+        }
+        await storage.setSecureItem('havenly_openrouter_api_key', trimmed);
+        setOpenRouterKeyStatus('success');
+        setOpenRouterKeyMessage('OpenRouter free models connected successfully!');
+      } else {
+        setOpenRouterKeyStatus('error');
+        setOpenRouterKeyMessage(`Verification failed (Status ${res.status}). Verify your key.`);
+      }
+    } catch (err: any) {
+      setOpenRouterKeyStatus('error');
+      setOpenRouterKeyMessage(err?.message || 'Network error connecting to OpenRouter.');
+    }
+  };
 
   const handleSaveApiKey = async () => {
     setApiKeyStatus('testing');
@@ -531,14 +586,83 @@ export default function SettingsScreen() {
         </View>
       )}
 
-        {/* Gemini AI Engine Settings */}
+        {/* AI Providers Settings */}
         {(!section || section === 'appearance') && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Gemini AI Engine</Text>
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>AI Providers (Free Tier & Backup)</Text>
+
+            {/* OpenRouter Free Models Card */}
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <IconKey color={colors.primary} size={18} style={{ marginRight: 8 }} />
+                <Text style={[styles.label, { color: colors.text, flex: 1 }]}>OpenRouter API Key (20+ Free Models)</Text>
+                <TouchableOpacity onPress={() => setShowOpenRouterKey(!showOpenRouterKey)}>
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                    {showOpenRouterKey ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.infoText, { color: colors.textMuted, marginBottom: 10 }]}>
+                Routes dialogue through free models (Gemma, Qwen, Llama, Nemotron) with high availability and no quota burn.
+              </Text>
+              <TextInput
+                value={openRouterKeyInput}
+                onChangeText={(val) => {
+                  setOpenRouterKeyInput(val);
+                  setOpenRouterKeyStatus('idle');
+                  setOpenRouterKeyMessage('');
+                }}
+                secureTextEntry={!showOpenRouterKey}
+                placeholder="Paste your OpenRouter API key (sk-or-v1-...)"
+                placeholderTextColor={colors.textMuted}
+                style={[
+                  styles.apiKeyInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.background,
+                    borderColor: openRouterKeyStatus === 'error' ? colors.error : openRouterKeyStatus === 'success' ? colors.success : colors.border,
+                  },
+                ]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <TouchableOpacity
+                  onPress={handleSaveOpenRouterKey}
+                  disabled={openRouterKeyStatus === 'testing'}
+                  style={[styles.saveKeyBtn, { backgroundColor: colors.primary }]}
+                >
+                  {openRouterKeyStatus === 'testing' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Verify & Save</Text>
+                  )}
+                </TouchableOpacity>
+                {openRouterKeyStatus === 'success' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <IconCheck color={colors.success} size={16} style={{ marginRight: 4 }} />
+                    <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Connected</Text>
+                  </View>
+                )}
+              </View>
+              {openRouterKeyMessage ? (
+                <Text
+                  style={{
+                    color: openRouterKeyStatus === 'error' ? colors.error : colors.textMuted,
+                    fontSize: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  {openRouterKeyMessage}
+                </Text>
+              ) : null}
+            </View>
+
+            {/* Google Gemini AI Engine Card */}
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <IconKey color={colors.primary} size={18} style={{ marginRight: 8 }} />
-                <Text style={[styles.label, { color: colors.text, flex: 1 }]}>Google Gemini API Key</Text>
+                <Text style={[styles.label, { color: colors.text, flex: 1 }]}>Google Gemini API Key (500 RPD)</Text>
                 <TouchableOpacity onPress={() => setShowKey(!showKey)}>
                   <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
                     {showKey ? 'Hide' : 'Show'}
@@ -546,7 +670,7 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={[styles.infoText, { color: colors.textMuted, marginBottom: 10 }]}>
-                Powers HavenlyAI voice dialogue and sanctuary chat. Key is saved locally on your device.
+                Gemini 3.5 Flash Lite text engine. Key is saved locally on your device.
               </Text>
               <TextInput
                 value={apiKeyInput}

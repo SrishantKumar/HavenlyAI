@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { useAppStore } from '../../store/useAppStore';
+import { openRouterService } from './openRouterService';
 
 export interface GeminiLiveCallbacks {
   onAudioReceived?: (pcm24kHzChunk: ArrayBuffer) => void;
@@ -299,152 +300,142 @@ export const geminiLiveService = {
 
   async fetchRestResponse(query: string): Promise<void> {
     try {
-      console.log('Gemini Live (REST): query:', query);
-      const apiKey = CONFIG.geminiApiKey;
-      if (!apiKey) {
-        throw new Error('AUTH_MISSING: Gemini API key is missing.');
-      }
+      console.log('Voice dialogue: query:', query);
+      let text = '';
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: activeConversationHistory.slice(-10),
-          systemInstruction: { parts: [{ text: LIVE_SYSTEM_PROMPT }] },
-        }),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Gemini Live REST error (status ${res.status}):`, errorText);
-        if (res.status === 401 || res.status === 403) {
-          throw new Error('AUTH_INVALID: Invalid Gemini API key.');
+      // 1. Try OpenRouter free models first (zero quota cost, high availability)
+      if (CONFIG.openRouterApiKey) {
+        try {
+          const historyForOpenRouter = activeConversationHistory.slice(-10).map((turn) => ({
+            role: turn.role,
+            content: turn.parts?.[0]?.text || '',
+          }));
+          const orResponse = await openRouterService.generateCompletion(
+            LIVE_SYSTEM_PROMPT,
+            historyForOpenRouter,
+            query
+          );
+          if (orResponse && orResponse.trim()) {
+            text = orResponse.trim();
+          }
+        } catch (orErr) {
+          console.warn('[OpenRouter] Free model attempt failed, falling back to Gemini:', orErr);
         }
-        throw new Error(`API_ERROR: HTTP ${res.status}`);
       }
 
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      // 2. Fall back to Gemini 3.5 Flash Lite if OpenRouter didn't return text
+      if (!text && CONFIG.geminiApiKey) {
+        const apiKey = CONFIG.geminiApiKey;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: activeConversationHistory.slice(-10),
+            systemInstruction: { parts: [{ text: LIVE_SYSTEM_PROMPT }] },
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        } else {
+          const errorText = await res.text();
+          console.error(`Gemini REST error (status ${res.status}):`, errorText);
+        }
+      }
+
       if (!text) {
-        throw new Error('EMPTY_RESPONSE: No candidate content returned from Gemini.');
+        throw new Error('All AI providers returned empty responses.');
       }
 
-      console.log('Gemini Live (REST) response:', text);
+      console.log('Voice dialogue response:', text);
       activeConversationHistory.push({ role: 'model', parts: [{ text }] });
       this.callbacks.onTranscriptReceived?.(text, 'model');
       this.speakTextResponse(text);
     } catch (err: any) {
-      console.error('Gemini Live (REST) fetch error:', err);
-      let errorResponse = "I'm having trouble connecting to Gemini AI right now. Please check your connection.";
-      if (err?.message?.includes('AUTH_')) {
-        errorResponse = "Gemini API key authorization failed. Please check your API key in Settings.";
-      }
+      console.error('Voice dialogue error:', err);
+      const errorResponse = "I'm having trouble connecting right now. Please check your network or API keys in Settings.";
       activeConversationHistory.push({ role: 'model', parts: [{ text: errorResponse }] });
       this.callbacks.onTranscriptReceived?.(errorResponse, 'model');
       this.speakTextResponse(errorResponse);
     }
   },
 
-  async speakTextResponse(text: string): Promise<void> {
+  speakTextResponse(text: string): void {
     const settings = useAppStore.getState().settings;
     const liveVoice = settings.voice?.selectedLiveVoice || 'Kore';
     const selectedVoice = settings.voice?.selectedVoice;
 
-    // 1. On Web: Attempt Google Gemini Neural Studio Voice first for lifelike human speech
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && CONFIG.geminiApiKey) {
-      try {
-        const pcmBase64 = await this.fetchGeminiSpeechAudio(text, liveVoice);
-        if (pcmBase64) {
-          console.log(`[Gemini Neural Voice] Playing studio voice for: "${liveVoice}"`);
-          const playback = this.playPCM24kHzBase64(
-            pcmBase64,
-            (chunk) => this.callbacks.onAudioReceived?.(chunk),
-            () => {
-              this.cleanupPlayback();
-              isSpeakingResponse = false;
-              this.callbacks.onStateChanged?.('connected');
-              setTimeout(() => this.restartRecognition(), 300);
-            },
-            () => {
-              // Fallback to human-tuned browser synthesis if Web Audio fails
-              this.speakWithWebSpeech(text, liveVoice, selectedVoice);
-            }
-          );
-          if (playback) return;
-        }
-      } catch (err) {
-        console.warn('[Gemini Voice] Neural playback error, falling back to natural speech:', err);
-      }
-
+    // Use our calibrated human natural speech engine:
+    // Zero quota consumption, zero rate limits, unlimited free calls!
+    if (Platform.OS === 'web') {
       this.speakWithWebSpeech(text, liveVoice, selectedVoice);
       return;
     }
 
-    // 2. Native expo-speech branch with voice preference mapping
-    if (Platform.OS !== 'web') {
-      try {
-        const Speech = require('expo-speech');
-        const go = async () => {
-          let voiceId: string | undefined;
-          if (selectedVoice && selectedVoice !== 'default') {
-            try {
-              const voices = await Speech.getAvailableVoicesAsync();
-              const match = voices.find((v: any) => v.name === selectedVoice || v.identifier === selectedVoice);
-              if (match) voiceId = match.identifier;
-            } catch (_) {}
-          } else {
-            try {
-              const voices = await Speech.getAvailableVoicesAsync();
-              const isFemale = liveVoice === 'Kore';
-              const match = voices.find((v: any) => {
-                const n = (v.name || '').toLowerCase();
-                const l = (v.language || '').toLowerCase();
-                if (!l.startsWith('en')) return false;
-                return isFemale
-                  ? (n.includes('samantha') || n.includes('karen') || n.includes('female') || n.includes('ava') || n.includes('zira'))
-                  : (n.includes('daniel') || n.includes('david') || n.includes('male') || n.includes('george') || n.includes('guy'));
-              });
-              if (match) voiceId = match.identifier;
-            } catch (_) {}
-          }
+    // Native expo-speech branch with voice preference mapping
+    try {
+      const Speech = require('expo-speech');
+      const go = async () => {
+        let voiceId: string | undefined;
+        if (selectedVoice && selectedVoice !== 'default') {
+          try {
+            const voices = await Speech.getAvailableVoicesAsync();
+            const match = voices.find((v: any) => v.name === selectedVoice || v.identifier === selectedVoice);
+            if (match) voiceId = match.identifier;
+          } catch (_) {}
+        } else {
+          try {
+            const voices = await Speech.getAvailableVoicesAsync();
+            const isFemale = liveVoice === 'Kore';
+            const match = voices.find((v: any) => {
+              const n = (v.name || '').toLowerCase();
+              const l = (v.language || '').toLowerCase();
+              if (!l.startsWith('en')) return false;
+              return isFemale
+                ? (n.includes('samantha') || n.includes('karen') || n.includes('female') || n.includes('ava') || n.includes('zira'))
+                : (n.includes('daniel') || n.includes('david') || n.includes('male') || n.includes('george') || n.includes('guy'));
+            });
+            if (match) voiceId = match.identifier;
+          } catch (_) {}
+        }
 
-          simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 120);
+        simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 120);
 
-          const estimatedMs = Math.max(2000, text.length * 75) + 4000;
-          const watchdog = setTimeout(() => {
-            if (isSpeakingResponse) {
-              console.warn('Speech watchdog fired — onComplete never received. Restarting mic.');
-              this.cleanupPlayback();
-              isSpeakingResponse = false;
-              this.callbacks.onStateChanged?.('connected');
-              this.restartRecognition();
-            }
-          }, estimatedMs);
-
-          const done = () => {
-            clearTimeout(watchdog);
+        const estimatedMs = Math.max(2000, text.length * 75) + 4000;
+        const watchdog = setTimeout(() => {
+          if (isSpeakingResponse) {
+            console.warn('Speech watchdog fired — onComplete never received. Restarting mic.');
             this.cleanupPlayback();
             isSpeakingResponse = false;
             this.callbacks.onStateChanged?.('connected');
-            setTimeout(() => this.restartRecognition(), 400);
-          };
+            this.restartRecognition();
+          }
+        }, estimatedMs);
 
-          try {
-            Speech.speak(text, {
-              voice: voiceId,
-              rate: 0.93,
-              pitch: liveVoice === 'Charon' ? 0.92 : liveVoice === 'Kore' ? 0.98 : 0.95,
-              onComplete: done,
-              onError: done,
-            });
-          } catch (_) { done(); }
+        const done = () => {
+          clearTimeout(watchdog);
+          this.cleanupPlayback();
+          isSpeakingResponse = false;
+          this.callbacks.onStateChanged?.('connected');
+          setTimeout(() => this.restartRecognition(), 400);
         };
-        go(); return;
-      } catch (_) {}
-    }
 
-    this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+        try {
+          Speech.speak(text, {
+            voice: voiceId,
+            rate: 0.93,
+            pitch: liveVoice === 'Charon' ? 0.92 : liveVoice === 'Kore' ? 0.98 : 0.95,
+            onComplete: done,
+            onError: done,
+          });
+        } catch (_) { done(); }
+      };
+      go();
+    } catch (_) {
+      this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+    }
   },
 
   async fetchGeminiSpeechAudio(text: string, voiceName: string): Promise<string | null> {

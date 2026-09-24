@@ -5,6 +5,7 @@ import { SUPPORTIVE_RESPONSES } from '../../constants/mockData';
 import { safetyService } from './safetyService';
 import { SYSTEM_PROMPT, SENTIMENT_ANALYSIS_PROMPT } from './prompts';
 import { memoryService } from './memoryService';
+import { openRouterService } from './openRouterService';
 
 export const geminiService = {
   async sendTextMessage(
@@ -49,7 +50,27 @@ export const geminiService = {
       };
     }
 
-    // Real API implementation
+    // 1. Try OpenRouter free models first (preserves Gemini quota, 0 cost)
+    if (CONFIG.openRouterApiKey) {
+      try {
+        const orReply = await openRouterService.generateCompletion(
+          contextualPrompt,
+          history.map((m) => ({ role: m.role as any, content: m.content })),
+          text
+        );
+        if (orReply && orReply.trim()) {
+          return {
+            text: orReply.trim(),
+            safetyFlagged: safetyLevel !== 'none',
+            safetyLevel,
+          };
+        }
+      } catch (orErr) {
+        console.warn('[OpenRouter] Free completion error, falling back to Gemini:', orErr);
+      }
+    }
+
+    // 2. Real Gemini API implementation
     try {
       if (CONFIG.geminiApiKey) {
         // Direct integration with Google AI Studio
