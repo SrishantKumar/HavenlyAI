@@ -290,46 +290,37 @@ export const geminiLiveService = {
     isSpeakingResponse = true;
 
     // ── Instant Client-Side Safety & Jailbreak Interception ─────────────
-    const lowerQuery = cleanQuery.toLowerCase();
-
     // A. Jailbreak immunity check
-    const isJailbreak =
-      lowerQuery.includes('ignore previous instructions') ||
-      lowerQuery.includes('ignore all instructions') ||
-      lowerQuery.includes('pretend you are') ||
-      lowerQuery.includes('act as dan') ||
-      lowerQuery.includes('you are now') ||
-      lowerQuery.includes('system prompt') ||
-      lowerQuery.includes('developer mode');
-
-    if (isJailbreak) {
-      const immuneReply = "I'm Haven. I'm here for you, not for that. Is there something you're feeling that you'd like to talk about?";
+    const jailbreak = safetyService.checkJailbreak(cleanQuery);
+    if (jailbreak) {
       activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
-      activeConversationHistory.push({ role: 'model', parts: [{ text: immuneReply }] });
-      this.callbacks.onTranscriptReceived?.(immuneReply, 'model');
-      this.speakTextResponse(immuneReply);
+      activeConversationHistory.push({ role: 'model', parts: [{ text: jailbreak.response }] });
+      this.callbacks.onTranscriptReceived?.(jailbreak.response, 'model');
+      this.speakTextResponse(jailbreak.response);
       return;
     }
 
     // B. Scope lock check (coding, math, general trivia tasks)
-    const isOutOfScope =
-      lowerQuery.includes('write code') ||
-      lowerQuery.includes('python script') ||
-      lowerQuery.includes('javascript') ||
-      lowerQuery.includes('solve this math') ||
-      lowerQuery.includes('write an essay') ||
-      lowerQuery.includes('recipe for');
-
-    if (isOutOfScope) {
-      const scopeReply = "I'm Haven, and I'm only here to support your emotional well-being. I'm not able to help with that, but I'm always here to listen if something is on your mind.";
+    const scope = safetyService.checkScope(cleanQuery);
+    if (scope) {
       activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
-      activeConversationHistory.push({ role: 'model', parts: [{ text: scopeReply }] });
-      this.callbacks.onTranscriptReceived?.(scopeReply, 'model');
-      this.speakTextResponse(scopeReply);
+      activeConversationHistory.push({ role: 'model', parts: [{ text: scope.response }] });
+      this.callbacks.onTranscriptReceived?.(scope.response, 'model');
+      this.speakTextResponse(scope.response);
       return;
     }
 
-    // C. Crisis classification
+    // C. Voice query check (settings redirection)
+    const voiceQuery = safetyService.checkVoiceQuery(cleanQuery);
+    if (voiceQuery) {
+      activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+      activeConversationHistory.push({ role: 'model', parts: [{ text: voiceQuery.response }] });
+      this.callbacks.onTranscriptReceived?.(voiceQuery.response, 'model');
+      this.speakTextResponse(voiceQuery.response);
+      return;
+    }
+
+    // D. Crisis classification
     const safetyLevel = safetyService.getSafetyLevel(cleanQuery);
     if (safetyLevel === 'high') {
       try {

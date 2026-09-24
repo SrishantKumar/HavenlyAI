@@ -5,7 +5,7 @@ import { SUPPORTIVE_RESPONSES } from '../../constants/mockData';
 import { safetyService } from './safetyService';
 import { SYSTEM_PROMPT, SENTIMENT_ANALYSIS_PROMPT } from './prompts';
 import { memoryService } from './memoryService';
-import { openRouterService } from './openRouterService';
+import { openRouterService, cleanModelResponse } from './openRouterService';
 
 export const geminiService = {
   async sendTextMessage(
@@ -13,7 +13,40 @@ export const geminiService = {
     conversationId: string,
     history: Message[]
   ): Promise<AIResponse> {
-    const safetyLevel = safetyService.getSafetyLevel(text);
+    const trimmedText = (text || '').trim();
+
+    // ── Instant Client-Side Deterministic Guardrails ─────────────────────
+    // 1. Jailbreak immunity check
+    const jailbreak = safetyService.checkJailbreak(trimmedText);
+    if (jailbreak) {
+      return {
+        text: jailbreak.response,
+        safetyFlagged: false,
+        safetyLevel: 'none',
+      };
+    }
+
+    // 2. Scope lock check (coding, technical, math, recipes, trivia)
+    const scope = safetyService.checkScope(trimmedText);
+    if (scope) {
+      return {
+        text: scope.response,
+        safetyFlagged: false,
+        safetyLevel: 'none',
+      };
+    }
+
+    // 3. Voice inquiry check
+    const voiceQuery = safetyService.checkVoiceQuery(trimmedText);
+    if (voiceQuery) {
+      return {
+        text: voiceQuery.response,
+        safetyFlagged: false,
+        safetyLevel: 'none',
+      };
+    }
+
+    const safetyLevel = safetyService.getSafetyLevel(trimmedText);
     const memoryProfile = await memoryService.getMemoryProfile();
     const contextualPrompt = memoryProfile ? `${SYSTEM_PROMPT}\n\nUser Context:\n${memoryProfile}` : SYSTEM_PROMPT;
 
@@ -99,9 +132,10 @@ export const geminiService = {
 
         if (response.ok) {
           const data = await response.json();
-          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const responseText = cleanModelResponse(rawText);
           return {
-            text: responseText,
+            text: responseText || "I'm right here with you. What's on your mind?",
             safetyFlagged: safetyLevel !== 'none',
             safetyLevel,
           };

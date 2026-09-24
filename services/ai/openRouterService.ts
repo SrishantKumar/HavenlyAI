@@ -43,6 +43,19 @@ function isMetaThought(text: string): boolean {
     'ah.',
     'prescriptive',
     'overbearing',
+    "here's a thinking process",
+    'here is a thinking process',
+    'analyze user input',
+    'check rules/scope',
+    'scope lock',
+    'jailbreak immunity',
+    'determine response',
+    'formulate response',
+    'per rule',
+    'rule 1',
+    'rule 2',
+    'rule 3',
+    'user says:',
   ];
   return metaTokens.some((t) => lower.includes(t));
 }
