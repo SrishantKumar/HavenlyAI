@@ -32,11 +32,6 @@ export const CONFIG = {
       } catch (_) {}
     }
     // 2. Fall back to environment variable
-    let key = (process.env.EXPO_PUBLIC_GEMINI_API_KEY || '').trim();
-    // Auto-heal known trailing character truncation from copy-pasting
-    if (key === 'AQ.Ab8RN6KECMbUbvrkRdtsBdaxtFxOv2hFpllIEnALNTX2EH2RW') {
-      key += 'g';
-    }
-    return key;
+    return (process.env.EXPO_PUBLIC_GEMINI_API_KEY || '').trim();
   },
 };

@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/React-19.2-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Google_Gemini-Multimodal_Live_API-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini" />
+  <img src="https://img.shields.io/badge/OpenRouter-Free_Models_Tier-6366F1?style=flat-square&logo=openai&logoColor=white" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/Supabase-Auth_&_Postgres-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/License-MIT-333333?style=flat-square" alt="License" />
   <a href="https://github.com/SrishantKumar/HavenlyAI/releases/latest"><img src="https://img.shields.io/github/v/release/SrishantKumar/HavenlyAI?style=flat-square&color=8B5CF6&label=Android_Release" alt="Latest Release" /></a>
@@ -91,12 +92,14 @@ flowchart TD
 
     subgraph TransportLayer ["Streaming and Network Transport"]
         LiveWS["Full-Duplex WebSocket\nBidiGenerateContent Stream"]
-        RESTFallback["HTTPS REST Gateway\nFallback STT/TTS Pipeline"]
+        RESTGateway["HTTPS Multi-Provider Gateway\nOpenRouter Free + Gemini Fallback"]
         WebRTC["LiveKit RTC Transport\nReal-Time Media Rooms"]
     end
 
-    subgraph IntelligenceLayer ["AI Orchestration and Safety Tier"]
-        GeminiLive["Gemini 2.0 / 1.5 Flash\nMultimodal Live Stream"]
+    subgraph IntelligenceLayer ["AI Orchestration, Models, and Safety Tier"]
+        OpenRouterHub["OpenRouter Free Models Hub\nCascade: openrouter/free, gemma, qwen"]
+        GeminiEngine["Google Gemini 2.0 / 3.5 Flash Lite\nMultimodal Live & 500 RPD REST"]
+        SpeechSynth["Zero-Quota Natural Voice Engine\nHuman-Calibrated Audio Synthesis"]
         PromptLock["Scope Boundary Lock\nAnti-Jailbreak Shield"]
         SafetyEngine["Crisis Classification Engine\nRisk Severity Analyzer"]
         MemoryEngine["Context and Memory Engine\nEmotional Vector Summarizer"]
@@ -121,14 +124,19 @@ flowchart TD
 
     %% Network Connections
     AudioIO -->|PCM Audio Frames| LiveWS
-    AudioIO -.->|Buffered Audio| RESTFallback
+    AudioIO -.->|Speech Transcription| RESTGateway
     AudioIO <-->|Peer Media| WebRTC
     Store <-->|Auth Tokens| SecureStore
 
-    %% AI Pipeline
-    LiveWS <--> GeminiLive
-    RESTFallback <--> GeminiLive
-    GeminiLive --> PromptLock
+    %% AI Pipeline Routing
+    RESTGateway -->|Tier 1: Free Models| OpenRouterHub
+    RESTGateway -->|Tier 2: Fallback| GeminiEngine
+    LiveWS <--> GeminiEngine
+    OpenRouterHub --> SpeechSynth
+    GeminiEngine --> SpeechSynth
+    SpeechSynth --> AudioIO
+    OpenRouterHub --> PromptLock
+    GeminiEngine --> PromptLock
     PromptLock --> SafetyEngine
     PromptLock --> MemoryEngine
 
@@ -167,42 +175,51 @@ flowchart LR
 
 ---
 
-### Engine 2: Multimodal Live AI and Streaming Orchestration
+### Engine 2: Multi-Provider AI Hub and Zero-Quota Voice Orchestration
 
-The AI engine (`services/ai/geminiLiveService.ts`, `services/ai/geminiService.ts`) coordinates communication with Google Gemini's Multimodal Live API via WebSocket and implements an automated fallback architecture.
+The AI engine (`services/ai/openRouterService.ts`, `services/ai/geminiLiveService.ts`, `services/ai/geminiService.ts`) coordinates multi-provider intelligence across OpenRouter's free model cluster and Google Gemini, paired with an acoustic-calibrated, zero-quota natural voice synthesis pipeline.
 
 ```mermaid
 flowchart TD
-    subgraph ConnectPhase ["Connection Initialization"]
-        Init["geminiLiveService.connect()"] --> WSOpen["Open WebSocket to\nGenerativeService.BidiGenerateContent"]
-        WSOpen --> Handshake["Transmit Session Setup Frame\nModel, Voice, System Prompt"]
+    subgraph Ingestion ["Speech Ingestion & Transcription"]
+        UserVoice["User Spoken Input"] --> STT["Client-Side Speech-to-Text\nexpo-speech-recognition / Web Speech"]
+        STT --> Transcript["Transcribed Text Payload"]
     end
 
-    subgraph StreamPhase ["Full-Duplex Operational Loop"]
-        UserVoice["Audio Stream from Mic"] --> AudioFrame["BidiGenerateContent Frame\nrealtimeInput: mimeType audio/pcm"]
-        AudioFrame --> LiveWS["Gemini Live WebSocket"]
-        LiveWS --> ModelProc["Gemini 2.0 Flash Processing"]
-        ModelProc --> ServerEvent{"Incoming Server Frame"}
+    subgraph MultiProviderHub ["Multi-Provider Intelligence Tier"]
+        Transcript --> RouteCheck{"OpenRouter Key Configured?"}
         
-        ServerEvent -->|serverContent: modelTurn| RecvAudio["Decode Audio Buffer\nTrigger onAudioReceived"]
-        ServerEvent -->|serverContent: interrupted| ServerInterrupt["Halt Local Audio Track\nClear Playback Queue"]
-        ServerEvent -->|serverContent: turnComplete| TurnEnd["Reset Turn State\nReady for User Input"]
+        RouteCheck -->|Yes| ORPrimary["OpenRouter Hub (openrouter/free)\nDynamic Free Tier Load-Balancer"]
+        RouteCheck -->|No / Exhausted| GemBackup["Google Gemini 3.5 / 2.0 Flash Lite\n500 RPD Quota Allocation"]
+        
+        ORPrimary -->|Rate Limit / 5xx| ORCascade["OpenRouter Free Cascade\n1. gemma-4-31b-it:free\n2. qwen3.8-27b:free\n3. nemotron-3.5-lightning:free\n4. lfm-2.5-2.6b:free"]
+        ORCascade -->|All Free Failed| GemBackup
+        
+        ORPrimary -->|Success| ResponseText["Synthesized Conversational Reply"]
+        ORCascade -->|Success| ResponseText
+        GemBackup -->|Success| ResponseText
     end
 
-    subgraph FallbackPipeline ["Resilience STT/REST/TTS Pipeline"]
-        WSFail{"WebSocket Dropped?"} -->|Yes| STT["Native Speech Recognition\nexpo-speech-recognition"]
-        STT --> REST["Gemini REST Call\ngeminiService.generateResponse()"]
-        REST --> TTS["Native Speech Synthesis\nexpo-speech"]
+    subgraph VoicePipeline ["Zero-Quota Natural Voice Engine"]
+        ResponseText --> VoiceMapper{"Platform & Persona Voice Calibration"}
+        VoiceMapper -->|Web Audio / Web Speech| HumanWebTTS["Calibrated Web Speech\nPitch: 0.98 (F) / 0.94 (M)\nRate: 0.93 | Persona Timbre"]
+        VoiceMapper -->|Native Audio / iOS / Android| HumanNativeTTS["Native expo-speech Driver\nSamantha / Ava / Daniel / Guy"]
+        
+        HumanWebTTS --> AudioOut["Natural, Human-like Audio Output\nZero Quota Used • Infinite Conversations"]
+        HumanNativeTTS --> AudioOut
     end
 
-    ConnectPhase --> StreamPhase
-    StreamPhase -.->|Network Anomaly| FallbackPipeline
+    subgraph LiveWSStream ["Full-Duplex Gemini Live WebSocket (Optional)"]
+        RawPCM["Raw PCM 16kHz Stream"] <--> LiveWS["Gemini Multimodal Live API\nBidiGenerateContent"]
+    end
 ```
 
 #### Key Capabilities:
-- **WebSocket Protocol**: Connects directly to `wss://generativelanguage.googleapis.com/.../BidiGenerateContent` with session configuration payloads defining sampling rate, selected synthetic voice, and system instructions.
-- **Low-Latency Streaming**: Transmits raw PCM chunks continuously, receiving server-side audio chunks in sub-second round-trip time.
-- **Autonomous Fallback Pipeline**: If device networking prevents persistent duplex WebSocket streaming, the engine seamlessly switches to on-device Speech-to-Text (`expo-speech-recognition`), REST inference via Gemini Flash, and text-to-speech synthesis (`expo-speech`).
+- **OpenRouter Free Model Cascade (`openRouterService.ts`)**: Routes conversational inference to OpenRouter's free model cluster (`openrouter/free`, `google/gemma-4-31b-it:free`, `qwen/qwen3.8-27b:free`, `nvidia/nemotron-3.5-lightning:free`, `liquid/lfm-2.5-2.6b:free`, `nex-agi/nex-n2.5-mini:free`). Provides unlimited zero-cost conversational inference without consuming strict Google AI Studio free tier limits.
+- **Resilient Dual-Tier Fallback (`geminiService.ts`)**: If OpenRouter encounters transient network anomalies or capacity limits, the engine gracefully cascades down the free model priority list and seamlessly falls back to Google Gemini 3.5 Flash Lite (500 RPD).
+- **Zero-Quota Natural Voice Pipeline (`geminiLiveService.ts`)**: Google's free-tier Gemini TTS is capped at 10 requests per day (RPD). HavenlyAI solves this bottleneck by deploying an acoustically calibrated browser and native speech engine (`rate: 0.93`, `pitch: 0.98` for female / `0.94` for male) mapped to lifelike human voices (`Samantha`, `Ava`, `Google US English`, `Daniel`, `Guy`). This delivers warm, non-robotic emotional dialogue with **zero quota consumption and unlimited call duration**.
+- **Dynamic In-App API Key Governance**: Users can inspect, customize, test, and persist their own OpenRouter and Gemini API keys directly in the in-app Settings screen without requiring code recompilation.
+- **WebSocket Full-Duplex Fallback**: Preserves direct bidirectional streaming to `wss://generativelanguage.googleapis.com/.../BidiGenerateContent` when connected with developer keys.
 
 ---
 
@@ -463,10 +480,11 @@ sequenceDiagram
 | **Type Safety** | TypeScript | 6.0.x | Strict interface contracts across all services and network payloads. |
 | **Routing** | Expo Router | 57.0.x | Deep-linkable, typed, file-system-driven application routing. |
 | **Realtime AI** | Gemini Live WebSocket | v1beta | Direct bidirectional socket streaming for sub-second vocal interaction. |
-| **REST AI** | Gemini Flash API | 2.0 / 1.5 | High-efficiency conversational fallback and memory summarization. |
+| **Free Intelligence** | OpenRouter API | v1 | Unlimited zero-cost inference via dynamic free-tier model cascade. |
+| **REST Fallback** | Gemini 3.5 / 2.0 Flash | v1beta | Resilient secondary conversational intelligence with 500 RPD allocation. |
 | **Audio Capture** | `expo-audio` | 57.0.x | High-fidelity hardware buffer capture and audio routing. |
 | **Speech-to-Text** | `expo-speech-recognition` | 56.0.x | Resilient device-native audio transcription. |
-| **Text-to-Speech** | `expo-speech` | 57.0.x | Native speech synthesis with rate and pitch governance. |
+| **Voice Synthesis** | Calibrated Web & Native Speech | Native / 57.x | Zero-quota human-calibrated voice synthesis (rate 0.93, pitch 0.98/0.94). |
 | **WebRTC Media** | `@livekit/react-native` | 2.12.x | Scalable WebRTC infrastructure for cross-network media rooms. |
 | **Animations** | `react-native-reanimated` | 4.5.x | Worklet-driven animations executing on the native UI thread. |
 | **State Store** | Zustand | 5.0.x | Unopinionated, zero-boilerplate reactive store with FSM capabilities. |
@@ -510,9 +528,10 @@ HavenlyAI/
 │   └── voice/                  # Voice recorder and animated visualizer widgets
 ├── constants/                  # Configuration values, color palettes, and themes
 ├── services/                   # Business logic and external service integrations
-│   ├── ai/                     # Gemini Live, Gemini REST, Prompts, and Safety
-│   │   ├── geminiLiveService.ts# WebSocket streaming service for full-duplex calls
+│   ├── ai/                     # Gemini Live, OpenRouter Hub, Prompts, and Safety
+│   │   ├── geminiLiveService.ts# WebSocket & speech pipeline for full-duplex calls
 │   │   ├── geminiService.ts    # REST fallback and chat generation service
+│   │   ├── openRouterService.ts# OpenRouter free model router and cascading fallback
 │   │   ├── memoryService.ts    # Long-term memory extraction and check-ins
 │   │   ├── prompts.ts          # Master system prompts and boundary locks
 │   │   └── safetyService.ts    # Heuristic crisis detection and triaging
@@ -541,7 +560,7 @@ HavenlyAI/
 - **Package Manager**: npm or yarn
 - **Expo CLI**: Executed via `npx expo`
 - **Mobile Hardware**: Physical iOS or Android device running the **Expo Go** application, or an active simulator/emulator
-- **API Keys**: Active Google AI Studio API key with access to Gemini 1.5 / 2.0 Flash
+- **API Keys**: OpenRouter API key (supports zero-cost free models) and/or Google AI Studio API key with access to Gemini Flash
 
 ### Environment Setup
 
@@ -583,7 +602,8 @@ npm run web
 
 | Parameter | Type | Required | Description |
 | :--- | :---: | :---: | :--- |
-| `EXPO_PUBLIC_GEMINI_API_KEY` | String | **Yes** | API key used for Google Gemini Multimodal Live WebSocket and REST inference. |
+| `EXPO_PUBLIC_OPENROUTER_API_KEY` | String | **Recommended** | API key used for OpenRouter free models (`openrouter/free`, Gemma, Qwen). Can also be configured and verified directly in the in-app Settings screen. |
+| `EXPO_PUBLIC_GEMINI_API_KEY` | String | Optional | API key used for Google Gemini Multimodal Live WebSocket and REST fallback inference (can also be entered in in-app Settings). |
 | `EXPO_PUBLIC_DEMO_MODE` | Boolean | No | When set to `true`, uses local simulation mocks without consuming API credits. Default: `false`. |
 | `EXPO_PUBLIC_SUPABASE_URL` | String | No | Target Supabase project endpoint for cloud persistence. |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | String | No | Anonymous public API key for Supabase client authorization. |
