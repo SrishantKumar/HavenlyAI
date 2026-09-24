@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 import { Home, MessageCircle, Mic, History, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const IconHome = Home as any;
@@ -15,6 +16,10 @@ export default function TabsLayout() {
   const isDark = useAppStore((state) => state.theme === 'dark');
   const colors = isDark ? COLORS.dark : COLORS.light;
   const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === 'web';
+
+  const tabHeight = isWeb ? 72 : 62 + insets.bottom;
+  const tabPaddingBottom = isWeb ? 12 : Math.max(insets.bottom, 6);
 
   return (
     <Tabs
@@ -22,16 +27,29 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom - 4 : 8,
+          borderTopWidth: 1,
+          height: tabHeight,
           paddingTop: 8,
+          paddingBottom: tabPaddingBottom,
+          elevation: 8,
+        },
+        tabBarItemStyle: {
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
+          lineHeight: 14,
         },
       }}
     >
