@@ -16,6 +16,8 @@
   <img src="https://img.shields.io/badge/Google_Gemini-Multimodal_Live_API-4285F4?style=flat-square&logo=google&logoColor=white" alt="Gemini" />
   <img src="https://img.shields.io/badge/Supabase-Auth_&_Postgres-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/License-MIT-333333?style=flat-square" alt="License" />
+  <a href="https://github.com/SrishantKumar/HavenlyAI/releases/latest"><img src="https://img.shields.io/github/v/release/SrishantKumar/HavenlyAI?style=flat-square&color=8B5CF6&label=Android_Release" alt="Latest Release" /></a>
+  <a href="https://github.com/SrishantKumar/HavenlyAI/releases/download/v1.0.0/HavenlyAI-v1.0.0.apk"><img src="https://img.shields.io/badge/Download-Android_APK_(v1.0.0)-3ECF8E?style=flat-square&logo=android&logoColor=white" alt="Download Android APK" /></a>
 </p>
 
 ---
