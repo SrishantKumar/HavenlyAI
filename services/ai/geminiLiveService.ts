@@ -17,6 +17,8 @@ let vadTimeout: any = null;
 let simulatedPlaybackInterval: any = null;
 let simulatedRecognitionTimeout: any = null;
 let recognitionInstance: any = null;
+let activeUtterance: any = null;
+let speechWatchdogTimeout: any = null;
 let activeConversationHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
 
 const LIVE_WS_BASE =
@@ -149,31 +151,60 @@ export const geminiLiveService = {
     }
 
     try {
-      recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'en-US';
+      if (recognitionInstance) {
+        try {
+          if (typeof recognitionInstance.abort === 'function') recognitionInstance.abort();
+          else if (typeof recognitionInstance.stop === 'function') recognitionInstance.stop();
+        } catch (_) {}
+        recognitionInstance = null;
+      }
+
+      const rec = new SpeechRecognition();
+      recognitionInstance = rec;
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
       let finalTranscript = '';
 
-      recognitionInstance.onresult = (event: any) => {
+      rec.onresult = (event: any) => {
         if (isSpeakingResponse) return;
         let interim = '', hasFinal = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript; hasFinal = true; }
-          else interim += event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+            hasFinal = true;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
         }
         const display = finalTranscript + interim;
         if (display.trim()) {
           this.callbacks.onTranscriptReceived?.(display, 'user');
           if (vadTimeout) clearTimeout(vadTimeout);
           vadTimeout = setTimeout(() => {
-            if (display.trim() && !isSpeakingResponse) { finalTranscript = ''; this.processUserSpeech(display.trim()); }
-          }, hasFinal ? 1800 : 3500);
+            if (display.trim() && !isSpeakingResponse) {
+              finalTranscript = '';
+              try { rec.stop(); } catch (_) {}
+              this.processUserSpeech(display.trim());
+            }
+          }, hasFinal ? 1200 : 2500);
         }
       };
-      recognitionInstance.onerror = (err: any) => { if (err.error !== 'not-allowed') this.restartRecognition(); };
-      recognitionInstance.onend = () => { if (speechSessionActive) this.restartRecognition(); };
-      recognitionInstance.start();
+
+      rec.onerror = (err: any) => {
+        if (err.error !== 'not-allowed' && err.error !== 'aborted') {
+          console.warn('Web SpeechRecognition error:', err.error);
+          this.restartRecognition();
+        }
+      };
+
+      rec.onend = () => {
+        if (speechSessionActive && !isSpeakingResponse) {
+          this.restartRecognition();
+        }
+      };
+
+      rec.start();
     } catch (e) {
       console.error('Web SpeechRecognition start failed:', e);
     }
@@ -220,7 +251,7 @@ export const geminiLiveService = {
                 cleanup();
                 this.processUserSpeech(displayText.trim());
               }
-            }, hasFinal ? 1800 : 3500);
+            }, hasFinal ? 1200 : 2500);
           }
         }));
 
@@ -267,7 +298,12 @@ export const geminiLiveService = {
   async fetchRestResponse(query: string): Promise<void> {
     try {
       console.log('Gemini Live (REST): query:', query);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
+      const apiKey = CONFIG.geminiApiKey;
+      if (!apiKey) {
+        throw new Error('AUTH_MISSING: Gemini API key is missing.');
+      }
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -276,17 +312,35 @@ export const geminiLiveService = {
           systemInstruction: { parts: [{ text: LIVE_SYSTEM_PROMPT }] },
         }),
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`Gemini Live REST error (status ${res.status}):`, errorText);
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('AUTH_INVALID: Invalid Gemini API key.');
+        }
+        throw new Error(`API_ERROR: HTTP ${res.status}`);
+      }
+
       const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "I hear you, and I'm right here with you.";
-      console.log('Gemini Live (REST):', text);
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!text) {
+        throw new Error('EMPTY_RESPONSE: No candidate content returned from Gemini.');
+      }
+
+      console.log('Gemini Live (REST) response:', text);
       activeConversationHistory.push({ role: 'model', parts: [{ text }] });
       this.callbacks.onTranscriptReceived?.(text, 'model');
       this.speakTextResponse(text);
-    } catch (err) {
-      console.error('Gemini Live (REST) fetch failed:', err);
-      isSpeakingResponse = false;
-      this.callbacks.onStateChanged?.('connected');
-      this.restartRecognition();
+    } catch (err: any) {
+      console.error('Gemini Live (REST) fetch error:', err);
+      let errorResponse = "I'm having trouble connecting to Gemini AI right now. Please check your connection.";
+      if (err?.message?.includes('AUTH_')) {
+        errorResponse = "Gemini API key authorization failed. Please check your API key in Settings.";
+      }
+      activeConversationHistory.push({ role: 'model', parts: [{ text: errorResponse }] });
+      this.callbacks.onTranscriptReceived?.(errorResponse, 'model');
+      this.speakTextResponse(errorResponse);
     }
   },
 
@@ -342,23 +396,80 @@ export const geminiLiveService = {
 
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 100);
-      setTimeout(() => { this.cleanupPlayback(); isSpeakingResponse = false; this.callbacks.onStateChanged?.('connected'); this.restartRecognition(); }, Math.max(1500, text.length * 60));
+      setTimeout(() => {
+        this.cleanupPlayback();
+        isSpeakingResponse = false;
+        this.callbacks.onStateChanged?.('connected');
+        this.restartRecognition();
+      }, Math.max(1500, text.length * 60));
       return;
     }
 
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch (_) {}
+
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1.0; utt.pitch = 1.1;
-    utt.onstart = () => { simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 100); };
-    utt.onend = () => { this.cleanupPlayback(); isSpeakingResponse = false; this.callbacks.onStateChanged?.('connected'); this.restartRecognition(); };
-    utt.onerror = () => { this.cleanupPlayback(); isSpeakingResponse = false; this.callbacks.onStateChanged?.('connected'); this.restartRecognition(); };
-    window.speechSynthesis.speak(utt);
+    activeUtterance = utt;
+    utt.rate = 1.0;
+    utt.pitch = 1.05;
+
+    let finished = false;
+    const estimatedMs = Math.max(2000, text.length * 70) + 3000;
+
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (speechWatchdogTimeout) {
+        clearTimeout(speechWatchdogTimeout);
+        speechWatchdogTimeout = null;
+      }
+      activeUtterance = null;
+      this.cleanupPlayback();
+      isSpeakingResponse = false;
+      this.callbacks.onStateChanged?.('connected');
+      setTimeout(() => this.restartRecognition(), 300);
+    };
+
+    speechWatchdogTimeout = setTimeout(() => {
+      if (isSpeakingResponse) {
+        console.warn('Web speech watchdog fired — onend never received. Restarting mic.');
+        done();
+      }
+    }, estimatedMs);
+
+    utt.onstart = () => {
+      simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 100);
+    };
+    utt.onend = () => done();
+    utt.onerror = (e) => {
+      console.warn('Web SpeechSynthesis error:', e);
+      done();
+    };
+
+    try {
+      window.speechSynthesis.resume();
+      window.speechSynthesis.speak(utt);
+    } catch (e) {
+      console.error('window.speechSynthesis.speak failed:', e);
+      done();
+    }
   },
 
   restartRecognition(): void {
     if (!speechSessionActive || isSpeakingResponse) return;
-    recognitionInstance = null;
-    this.startSpeechRecognitionLoop();
+    if (recognitionInstance) {
+      try {
+        if (typeof recognitionInstance.abort === 'function') recognitionInstance.abort();
+        else if (typeof recognitionInstance.stop === 'function') recognitionInstance.stop();
+      } catch (_) {}
+      recognitionInstance = null;
+    }
+    setTimeout(() => {
+      if (speechSessionActive && !isSpeakingResponse) {
+        this.startSpeechRecognitionLoop();
+      }
+    }, 250);
   },
 
   startSimulatedRecognitionLoop(): void {
@@ -383,12 +494,22 @@ export const geminiLiveService = {
   disconnect(): void {
     speechSessionActive = false;
     isSpeakingResponse = false;
-    if (recognitionInstance) { try { recognitionInstance.stop(); } catch (_) {} recognitionInstance = null; }
+    if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
+    if (recognitionInstance) {
+      try {
+        if (typeof recognitionInstance.abort === 'function') recognitionInstance.abort();
+        else if (typeof recognitionInstance.stop === 'function') recognitionInstance.stop();
+      } catch (_) {}
+      recognitionInstance = null;
+    }
     if (simulatedRecognitionTimeout) { clearTimeout(simulatedRecognitionTimeout); simulatedRecognitionTimeout = null; }
     if (vadTimeout) { clearTimeout(vadTimeout); vadTimeout = null; }
     this.cleanupPlayback();
     if (liveWs) { try { liveWs.close(); } catch (_) {} liveWs = null; }
-    if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    activeUtterance = null;
     this.callbacks.onStateChanged?.('disconnected');
     console.log('Gemini Live: Session ended.');
   },
@@ -396,8 +517,14 @@ export const geminiLiveService = {
   sendAudio(_: ArrayBuffer): void {},
   sendText(text: string): void { if (text.trim()) this.processUserSpeech(text.trim()); },
   interrupt(): void {
-    if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
-    this.cleanupPlayback(); isSpeakingResponse = false; this.restartRecognition();
+    if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    activeUtterance = null;
+    this.cleanupPlayback();
+    isSpeakingResponse = false;
+    this.restartRecognition();
   },
   cleanupAudio(): void { this.cleanupPlayback(); },
   downsampleBuffer(_b: Float32Array, _i: number, _o: number): ArrayBuffer { return new ArrayBuffer(0); },

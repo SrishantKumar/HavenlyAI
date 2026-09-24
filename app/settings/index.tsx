@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Sun, Moon, Volume2, Shield, Info, AlertTriangle, Play, Square, Check, Volume1 } from 'lucide-react-native';
+import { Sun, Moon, Volume2, Shield, Info, AlertTriangle, Play, Square, Check, Volume1, Key } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
+import { CONFIG, AI_CONFIG } from '../../constants/config';
+import { storage } from '../../utils/storage';
 
 const IconSun = Sun as any;
 const IconMoon = Moon as any;
@@ -16,6 +18,7 @@ const IconPlay = Play as any;
 const IconSquare = Square as any;
 const IconCheck = Check as any;
 const IconVolume1 = Volume1 as any;
+const IconKey = Key as any;
 import Header from '../../components/ui/Header';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
@@ -35,6 +38,10 @@ export default function SettingsScreen() {
   const [clearDataModalVisible, setClearDataModalVisible] = useState(false);
   const [voices, setVoices] = useState<any[]>([]);
   const [isPlayingPreview, setIsPlayingPreview] = useState<string | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [apiKeyMessage, setApiKeyMessage] = useState('');
+  const [showKey, setShowKey] = useState(false);
 
   // Load available SpeechSynthesis voices
   useEffect(() => {
@@ -65,6 +72,58 @@ export default function SettingsScreen() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const key = CONFIG.geminiApiKey;
+    if (key) {
+      setApiKeyInput(key);
+    }
+  }, []);
+
+  const handleSaveApiKey = async () => {
+    setApiKeyStatus('testing');
+    setApiKeyMessage('');
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('havenly_gemini_api_key');
+        }
+        await storage.deleteSecureItem('havenly_gemini_api_key');
+      } catch (_) {}
+      setApiKeyStatus('idle');
+      setApiKeyMessage('Custom key cleared.');
+      return;
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${trimmed}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+        }),
+      });
+
+      if (res.ok) {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('havenly_gemini_api_key', trimmed);
+        }
+        await storage.setSecureItem('havenly_gemini_api_key', trimmed);
+        setApiKeyStatus('success');
+        setApiKeyMessage('Gemini AI connected successfully!');
+      } else {
+        const errorText = await res.text();
+        console.warn('API test failed:', errorText);
+        setApiKeyStatus('error');
+        setApiKeyMessage(`Verification failed (Status ${res.status}). Verify your key.`);
+      }
+    } catch (err: any) {
+      setApiKeyStatus('error');
+      setApiKeyMessage(err?.message || 'Network error connecting to Gemini.');
+    }
+  };
 
   const handleToggleTheme = (mode: 'light' | 'dark' | 'system') => {
     setTheme(mode);
@@ -400,6 +459,78 @@ export default function SettingsScreen() {
         </View>
       )}
 
+        {/* Gemini AI Engine Settings */}
+        {(!section || section === 'appearance') && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Gemini AI Engine</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <IconKey color={colors.primary} size={18} style={{ marginRight: 8 }} />
+                <Text style={[styles.label, { color: colors.text, flex: 1 }]}>Google Gemini API Key</Text>
+                <TouchableOpacity onPress={() => setShowKey(!showKey)}>
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                    {showKey ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.infoText, { color: colors.textMuted, marginBottom: 10 }]}>
+                Powers HavenlyAI voice dialogue and sanctuary chat. Key is saved locally on your device.
+              </Text>
+              <TextInput
+                value={apiKeyInput}
+                onChangeText={(val) => {
+                  setApiKeyInput(val);
+                  setApiKeyStatus('idle');
+                  setApiKeyMessage('');
+                }}
+                secureTextEntry={!showKey}
+                placeholder="Paste your Gemini API key (AIza... or AQ...)"
+                placeholderTextColor={colors.textMuted}
+                style={[
+                  styles.apiKeyInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.background,
+                    borderColor: apiKeyStatus === 'error' ? colors.error : apiKeyStatus === 'success' ? colors.success : colors.border,
+                  },
+                ]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <TouchableOpacity
+                  onPress={handleSaveApiKey}
+                  disabled={apiKeyStatus === 'testing'}
+                  style={[styles.saveKeyBtn, { backgroundColor: colors.primary }]}
+                >
+                  {apiKeyStatus === 'testing' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Verify & Save</Text>
+                  )}
+                </TouchableOpacity>
+                {apiKeyStatus === 'success' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <IconCheck color={colors.success} size={16} style={{ marginRight: 4 }} />
+                    <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Connected</Text>
+                  </View>
+                )}
+              </View>
+              {apiKeyMessage ? (
+                <Text
+                  style={{
+                    color: apiKeyStatus === 'error' ? colors.error : colors.textMuted,
+                    fontSize: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  {apiKeyMessage}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        )}
+
         {/* Privacy Settings */}
         {(!section || section === 'privacy') && (
           <View style={styles.section}>
@@ -608,5 +739,21 @@ const styles = StyleSheet.create({
   aboutText: {
     ...TYPOGRAPHY.caption,
     fontSize: 12,
+  },
+  apiKeyInput: {
+    borderRadius: LAYOUT.borderRadius.small,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  saveKeyBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: LAYOUT.borderRadius.small,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
   },
 });
