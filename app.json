@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "HavenlyAI",
+    "slug": "havenlyai",
+    "scheme": "havenlyai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4C1D95"
+    },
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sochworks.havenlyai",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow HavenlyAI to access your microphone to listen to your voice notes.",
+        "NSSpeechRecognitionUsageDescription": "Allow HavenlyAI to transcribe your voice reflections."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#4C1D95",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sochworks.havenlyai"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-audio",
+      "expo-speech-recognition"
+    ]
+  }
+}
