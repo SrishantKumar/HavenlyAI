@@ -119,6 +119,46 @@ export const safetyService = {
   },
 
   /**
+   * Deterministic check for identity queries: "who am i", "what is my name", "do you know who i am"
+   */
+  checkIdentityQuery(text: string, userName?: string): { isIdentityQuery: boolean; response: string } | null {
+    const lower = (text || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[?!.,]/g, '')
+      .replace(/\s+/g, ' ');
+
+    const identityPatterns = [
+      'who am i',
+      'who am i really',
+      'what is my name',
+      'whats my name',
+      'what is my name again',
+      'do you know who i am',
+      'do you know my name',
+      'do you remember me',
+      'do you remember my name',
+      'tell me my name',
+      'what do you call me',
+    ];
+
+    const matched = identityPatterns.some((p) => lower === p || lower.startsWith(p));
+    if (matched) {
+      if (userName && userName !== 'User' && userName.trim()) {
+        return {
+          isIdentityQuery: true,
+          response: `You're ${userName.trim()}! I'm Haven, and I'm always right here with you. How are you feeling today? 💜`,
+        };
+      }
+      return {
+        isIdentityQuery: true,
+        response: "You're my friend here in Havenly, and I'm right here with you. What would you like me to call you? 💜",
+      };
+    }
+    return null;
+  },
+
+  /**
    * Classifies user text into safety risk levels
    */
   async classifySafety(text: string): Promise<SafetyLevel> {

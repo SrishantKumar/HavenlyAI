@@ -46,6 +46,17 @@ export const geminiService = {
       };
     }
 
+    // 4. Identity & Name inquiry check ("who am i", "what is my name")
+    const userName = await memoryService.getUserName();
+    const identityQuery = safetyService.checkIdentityQuery(trimmedText, userName);
+    if (identityQuery) {
+      return {
+        text: identityQuery.response,
+        safetyFlagged: false,
+        safetyLevel: 'none',
+      };
+    }
+
     const safetyLevel = safetyService.getSafetyLevel(trimmedText);
     const memoryProfile = await memoryService.getMemoryProfile();
     const contextualPrompt = memoryProfile ? `${SYSTEM_PROMPT}\n\nUser Context:\n${memoryProfile}` : SYSTEM_PROMPT;

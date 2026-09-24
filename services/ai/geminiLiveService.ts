@@ -320,7 +320,20 @@ export const geminiLiveService = {
       return;
     }
 
-    // D. Crisis classification
+    // D. Identity inquiry check ("who am i", "what is my name")
+    const identityQuery = safetyService.checkIdentityQuery(
+      cleanQuery,
+      useAppStore.getState().user?.name
+    );
+    if (identityQuery) {
+      activeConversationHistory.push({ role: 'user', parts: [{ text: cleanQuery }] });
+      activeConversationHistory.push({ role: 'model', parts: [{ text: identityQuery.response }] });
+      this.callbacks.onTranscriptReceived?.(identityQuery.response, 'model');
+      this.speakTextResponse(identityQuery.response);
+      return;
+    }
+
+    // E. Crisis classification
     const safetyLevel = safetyService.getSafetyLevel(cleanQuery);
     if (safetyLevel === 'high') {
       try {
