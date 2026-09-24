@@ -200,19 +200,28 @@ export default function SettingsScreen() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const playLiveVoicePreview = (voiceId: string, gender: string) => {
+  const playLiveVoicePreview = async (voiceId: string, gender: string) => {
+    const previewKey = `live_${voiceId}`;
+    if (isPlayingPreview === previewKey) {
+      if (typeof window !== 'undefined' && (window as any).__havenlyPreviewSource) {
+        try { (window as any).__havenlyPreviewSource.stop(); } catch (_) {}
+        (window as any).__havenlyPreviewSource = null;
+      }
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlayingPreview(null);
+      return;
+    }
+
     if (Platform.OS !== 'web') {
       try {
         const Speech = require('expo-speech');
-        if (isPlayingPreview === `live_${voiceId}`) {
-          Speech.stop();
-          setIsPlayingPreview(null);
-          return;
-        }
-
         Speech.stop();
-        setIsPlayingPreview(`live_${voiceId}`);
+        setIsPlayingPreview(previewKey);
         Speech.speak(`Hello! I am ${voiceId}. I will be your companion for live voice sessions.`, {
+          rate: 0.93,
+          pitch: gender === 'female' ? 0.98 : 0.94,
           onComplete: () => setIsPlayingPreview(null),
           onError: () => setIsPlayingPreview(null),
         });
@@ -222,34 +231,97 @@ export default function SettingsScreen() {
       }
     }
 
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (typeof window === 'undefined') return;
 
-    if (isPlayingPreview === `live_${voiceId}`) {
-      window.speechSynthesis.cancel();
-      setIsPlayingPreview(null);
-      return;
+    // 1. Try Gemini studio neural voice preview if API key is present
+    if (CONFIG.geminiApiKey) {
+      try {
+        setIsPlayingPreview(previewKey);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.ttsModel}:generateContent?key=${CONFIG.geminiApiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: `Hello! I am ${voiceId}. I will be your companion for live voice sessions.` }] }],
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: voiceId }
+                }
+              }
+            }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const pcmBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          if (pcmBase64) {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContextClass) {
+              const audioCtx = new AudioContextClass({ sampleRate: 24000 });
+              const binary = atob(pcmBase64);
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+              const float32 = new Float32Array(int16.length);
+              for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
+
+              const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+              buffer.getChannelData(0).set(float32);
+
+              const source = audioCtx.createBufferSource();
+              source.buffer = buffer;
+              source.connect(audioCtx.destination);
+              (window as any).__havenlyPreviewSource = source;
+
+              source.onended = () => {
+                try { audioCtx.close(); } catch (_) {}
+                setIsPlayingPreview(null);
+              };
+
+              source.start();
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini audio preview error, falling back:', err);
+      }
     }
+
+    // 2. High-fidelity natural browser speech synthesis fallback
+    if (!window.speechSynthesis) return;
 
     window.speechSynthesis.cancel();
+    setIsPlayingPreview(previewKey);
+
     const utterance = new SpeechSynthesisUtterance(`Hello! I am ${voiceId}. I will be your companion for live voice sessions.`);
-    
-    // Find matching gender local voice for demo
     const localVoices = window.speechSynthesis.getVoices();
+    const englishVoices = localVoices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+
     let localMatch = null;
     if (gender === 'female') {
-      localMatch = localVoices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('veena') || v.name.toLowerCase().includes('samantha') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('female')));
+      localMatch = englishVoices.find(v => {
+        const n = v.name.toLowerCase();
+        return (n.includes('natural') || n.includes('enhanced') || n.includes('samantha') || n.includes('ava') || n.includes('jenny') || n.includes('victoria') || n.includes('female')) && !n.includes('compact');
+      }) || englishVoices.find(v => v.name.toLowerCase().includes('female')) || englishVoices[0];
     } else {
-      localMatch = localVoices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('ravi') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('daniel') || v.name.toLowerCase().includes('male')));
+      localMatch = englishVoices.find(v => {
+        const n = v.name.toLowerCase();
+        return (n.includes('natural') || n.includes('enhanced') || n.includes('daniel') || n.includes('guy') || n.includes('david') || n.includes('male')) && !n.includes('compact');
+      }) || englishVoices.find(v => v.name.toLowerCase().includes('male')) || englishVoices[0];
     }
 
-    if (localMatch) {
-      utterance.voice = localMatch;
-    }
-    
-    utterance.onstart = () => setIsPlayingPreview(`live_${voiceId}`);
+    if (localMatch) utterance.voice = localMatch;
+    utterance.rate = 0.93;
+    utterance.pitch = gender === 'female' ? 0.98 : 0.94;
+
     utterance.onend = () => setIsPlayingPreview(null);
     utterance.onerror = () => setIsPlayingPreview(null);
 
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
   };
 

@@ -19,6 +19,8 @@ let simulatedRecognitionTimeout: any = null;
 let recognitionInstance: any = null;
 let activeUtterance: any = null;
 let speechWatchdogTimeout: any = null;
+let activeAudioSource: any = null;
+let activeAudioContext: any = null;
 let activeConversationHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
 
 const LIVE_WS_BASE =
@@ -344,26 +346,72 @@ export const geminiLiveService = {
     }
   },
 
-  speakTextResponse(text: string): void {
+  async speakTextResponse(text: string): Promise<void> {
+    const settings = useAppStore.getState().settings;
+    const liveVoice = settings.voice?.selectedLiveVoice || 'Kore';
+    const selectedVoice = settings.voice?.selectedVoice;
+
+    // 1. On Web: Attempt Google Gemini Neural Studio Voice first for lifelike human speech
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && CONFIG.geminiApiKey) {
+      try {
+        const pcmBase64 = await this.fetchGeminiSpeechAudio(text, liveVoice);
+        if (pcmBase64) {
+          console.log(`[Gemini Neural Voice] Playing studio voice for: "${liveVoice}"`);
+          const playback = this.playPCM24kHzBase64(
+            pcmBase64,
+            (chunk) => this.callbacks.onAudioReceived?.(chunk),
+            () => {
+              this.cleanupPlayback();
+              isSpeakingResponse = false;
+              this.callbacks.onStateChanged?.('connected');
+              setTimeout(() => this.restartRecognition(), 300);
+            },
+            () => {
+              // Fallback to human-tuned browser synthesis if Web Audio fails
+              this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+            }
+          );
+          if (playback) return;
+        }
+      } catch (err) {
+        console.warn('[Gemini Voice] Neural playback error, falling back to natural speech:', err);
+      }
+
+      this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+      return;
+    }
+
+    // 2. Native expo-speech branch with voice preference mapping
     if (Platform.OS !== 'web') {
       try {
         const Speech = require('expo-speech');
         const go = async () => {
           let voiceId: string | undefined;
-          const voiceName = useAppStore.getState().settings.voice.selectedVoice;
-          if (voiceName && voiceName !== 'default') {
+          if (selectedVoice && selectedVoice !== 'default') {
             try {
               const voices = await Speech.getAvailableVoicesAsync();
-              const match = voices.find((v: any) => v.name === voiceName);
+              const match = voices.find((v: any) => v.name === selectedVoice || v.identifier === selectedVoice);
+              if (match) voiceId = match.identifier;
+            } catch (_) {}
+          } else {
+            try {
+              const voices = await Speech.getAvailableVoicesAsync();
+              const isFemale = liveVoice === 'Kore';
+              const match = voices.find((v: any) => {
+                const n = (v.name || '').toLowerCase();
+                const l = (v.language || '').toLowerCase();
+                if (!l.startsWith('en')) return false;
+                return isFemale
+                  ? (n.includes('samantha') || n.includes('karen') || n.includes('female') || n.includes('ava') || n.includes('zira'))
+                  : (n.includes('daniel') || n.includes('david') || n.includes('male') || n.includes('george') || n.includes('guy'));
+              });
               if (match) voiceId = match.identifier;
             } catch (_) {}
           }
 
           simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 120);
 
-          // Safety watchdog: if onComplete never fires (iOS audio session conflict),
-          // force-reset after estimated speech duration + 4s so conversation continues
-          const estimatedMs = Math.max(2000, text.length * 70) + 4000;
+          const estimatedMs = Math.max(2000, text.length * 75) + 4000;
           const watchdog = setTimeout(() => {
             if (isSpeakingResponse) {
               console.warn('Speech watchdog fired — onComplete never received. Restarting mic.');
@@ -385,6 +433,8 @@ export const geminiLiveService = {
           try {
             Speech.speak(text, {
               voice: voiceId,
+              rate: 0.93,
+              pitch: liveVoice === 'Charon' ? 0.92 : liveVoice === 'Kore' ? 0.98 : 0.95,
               onComplete: done,
               onError: done,
             });
@@ -394,6 +444,109 @@ export const geminiLiveService = {
       } catch (_) {}
     }
 
+    this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+  },
+
+  async fetchGeminiSpeechAudio(text: string, voiceName: string): Promise<string | null> {
+    const apiKey = CONFIG.geminiApiKey;
+    if (!apiKey) return null;
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.ttsModel}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text }] }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName }
+              }
+            }
+          }
+        })
+      });
+      if (!res.ok) {
+        console.warn(`[Gemini TTS API] Status ${res.status}, using natural browser voice fallback.`);
+        return null;
+      }
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+    } catch (err) {
+      console.warn('[Gemini TTS API] Fetch error:', err);
+      return null;
+    }
+  },
+
+  playPCM24kHzBase64(
+    base64Data: string,
+    onAudioTick: (chunk: ArrayBuffer) => void,
+    onComplete: () => void,
+    onError: () => void
+  ): { stop: () => void } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return null;
+
+      const audioCtx = new AudioContextClass({ sampleRate: 24000 });
+      activeAudioContext = audioCtx;
+
+      const binary = atob(base64Data);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768.0;
+      }
+
+      const buffer = audioCtx.createBuffer(1, float32.length, 24000);
+      buffer.getChannelData(0).set(float32);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      activeAudioSource = source;
+
+      simulatedPlaybackInterval = setInterval(() => {
+        onAudioTick(new ArrayBuffer(512));
+      }, 100);
+
+      let ended = false;
+      const cleanup = () => {
+        if (ended) return;
+        ended = true;
+        this.cleanupPlayback();
+        if (activeAudioSource === source) activeAudioSource = null;
+        try { audioCtx.close(); } catch (_) {}
+        if (activeAudioContext === audioCtx) activeAudioContext = null;
+      };
+
+      source.onended = () => {
+        cleanup();
+        onComplete();
+      };
+
+      source.start();
+      return {
+        stop: () => {
+          cleanup();
+          try { source.stop(); } catch (_) {}
+        }
+      };
+    } catch (err) {
+      console.error('Web Audio PCM playback failed:', err);
+      onError();
+      return null;
+    }
+  },
+
+  speakWithWebSpeech(text: string, liveVoice: string, selectedVoice?: string): void {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 100);
       setTimeout(() => {
@@ -411,11 +564,52 @@ export const geminiLiveService = {
 
     const utt = new SpeechSynthesisUtterance(text);
     activeUtterance = utt;
-    utt.rate = 1.0;
-    utt.pitch = 1.05;
+
+    // Resolve user's chosen voice or natural human voice matching persona
+    const allVoices = window.speechSynthesis.getVoices();
+    let chosenVoice: any = null;
+
+    if (selectedVoice && selectedVoice !== 'default') {
+      chosenVoice = allVoices.find(v => v.name === selectedVoice || (v as any).voiceURI === selectedVoice);
+    }
+
+    const isFemale = liveVoice === 'Kore';
+    const englishVoices = allVoices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+
+    if (!chosenVoice) {
+      if (isFemale) {
+        // Find best warm natural female voice (Samantha, Ava, Jenny, Google US English Female, etc.)
+        chosenVoice =
+          englishVoices.find(v => {
+            const n = v.name.toLowerCase();
+            return (n.includes('natural') || n.includes('enhanced') || n.includes('samantha') || n.includes('ava') || n.includes('jenny') || n.includes('victoria') || n.includes('zira') || n.includes('karen')) && !n.includes('compact');
+          }) ||
+          englishVoices.find(v => v.name.toLowerCase().includes('female')) ||
+          englishVoices.find(v => !v.name.toLowerCase().includes('compact')) ||
+          englishVoices[0];
+      } else {
+        // Find best calm natural male voice (Daniel, Guy, David, Google UK English Male, etc.)
+        chosenVoice =
+          englishVoices.find(v => {
+            const n = v.name.toLowerCase();
+            return (n.includes('natural') || n.includes('enhanced') || n.includes('daniel') || n.includes('guy') || n.includes('david') || n.includes('oliver') || n.includes('george')) && !n.includes('compact');
+          }) ||
+          englishVoices.find(v => v.name.toLowerCase().includes('male')) ||
+          englishVoices.find(v => !v.name.toLowerCase().includes('compact')) ||
+          englishVoices[0];
+      }
+    }
+
+    if (chosenVoice) {
+      utt.voice = chosenVoice;
+    }
+
+    // Natural empathetic vocal pacing (calm, warm, unhurried)
+    utt.rate = 0.93;
+    utt.pitch = isFemale ? 0.98 : liveVoice === 'Charon' ? 0.92 : 0.96;
 
     let finished = false;
-    const estimatedMs = Math.max(2000, text.length * 70) + 3000;
+    const estimatedMs = Math.max(2000, text.length * 75) + 3000;
 
     const done = () => {
       if (finished) return;
@@ -495,6 +689,14 @@ export const geminiLiveService = {
     speechSessionActive = false;
     isSpeakingResponse = false;
     if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
+    if (activeAudioSource) {
+      try { activeAudioSource.stop(); } catch (_) {}
+      activeAudioSource = null;
+    }
+    if (activeAudioContext) {
+      try { activeAudioContext.close(); } catch (_) {}
+      activeAudioContext = null;
+    }
     if (recognitionInstance) {
       try {
         if (typeof recognitionInstance.abort === 'function') recognitionInstance.abort();
@@ -518,6 +720,14 @@ export const geminiLiveService = {
   sendText(text: string): void { if (text.trim()) this.processUserSpeech(text.trim()); },
   interrupt(): void {
     if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
+    if (activeAudioSource) {
+      try { activeAudioSource.stop(); } catch (_) {}
+      activeAudioSource = null;
+    }
+    if (activeAudioContext) {
+      try { activeAudioContext.close(); } catch (_) {}
+      activeAudioContext = null;
+    }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       try { window.speechSynthesis.cancel(); } catch (_) {}
     }
