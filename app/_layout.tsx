@@ -104,9 +104,9 @@ function MobileShell({ children }: { children: React.ReactNode }) {
   const theme = useAppStore((state) => state.theme);
   const isDark = theme === 'dark';
   const colors = isDark ? COLORS.dark : COLORS.light;
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  // Inject web reset styles for seamless mobile-in-desktop presentation
+  // Inject web reset styles for seamless full-height presentation
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const styleId = 'havenly-web-mobile-styles';
@@ -123,14 +123,14 @@ function MobileShell({ children }: { children: React.ReactNode }) {
           margin: 0;
           padding: 0;
           overflow: hidden;
-          background-color: ${isDark ? '#070A12' : '#EFF2F7'};
+          background-color: ${colors.background};
         }
         * {
           box-sizing: border-box;
         }
       `;
     }
-  }, [isDark]);
+  }, [colors.background]);
 
   const isDesktopWeb = Platform.OS === 'web' && width > 480;
 
@@ -138,56 +138,10 @@ function MobileShell({ children }: { children: React.ReactNode }) {
     return <View style={[styles.fullScreen, { backgroundColor: colors.background }]}>{children}</View>;
   }
 
-  // Adaptive dimensions for desktop screens
-  const frameHeight = Math.min(Math.max(height * 0.94, 600), 880);
-  const frameWidth = Math.min(420, width - 32);
-
   return (
-    <View style={[styles.webBackdrop, { backgroundColor: isDark ? '#070A12' : '#EFF2F7' }]}>
-      {/* Ambient background lighting */}
-      <View 
-        style={[
-          styles.ambientGlow, 
-          { 
-            backgroundColor: isDark ? '#6366F1' : '#A5B4FC',
-            opacity: isDark ? 0.08 : 0.12,
-          }
-        ]} 
-      />
-
-      {/* Realistic Mobile Device Mockup Frame */}
-      <View 
-        style={[
-          styles.phoneFrame, 
-          { 
-            width: frameWidth,
-            height: frameHeight,
-            backgroundColor: colors.background,
-            borderColor: isDark ? '#1E293B' : '#CBD5E1',
-          }
-        ]}
-      >
-        {/* Dynamic Island / Hardware Speaker Bezel */}
-        <View style={[styles.phoneTopBezel, { backgroundColor: colors.background }]}>
-          <View style={[styles.dynamicIsland, { backgroundColor: isDark ? '#000000' : '#18181B' }]}>
-            <View style={styles.cameraLens} />
-          </View>
-        </View>
-
-        {/* Mobile Viewport Screen */}
-        <View style={styles.phoneScreen}>
-          {children}
-        </View>
-
-        {/* Bottom Hardware Home Bar Indicator */}
-        <View style={[styles.phoneBottomBezel, { backgroundColor: colors.background }]}>
-          <View 
-            style={[
-              styles.homeIndicatorPill, 
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)' }
-            ]} 
-          />
-        </View>
+    <View style={[styles.webBackdrop, { backgroundColor: colors.background }]}>
+      <View style={[styles.cleanMobileContainer, { backgroundColor: colors.background }]}>
+        {children}
       </View>
     </View>
   );
@@ -224,78 +178,12 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
   },
-  ambientGlow: {
-    position: 'absolute',
-    width: 600,
-    height: 600,
-    borderRadius: 300,
-    ...Platform.select({
-      web: {
-        filter: 'blur(100px)',
-      },
-    }),
-  },
-  phoneFrame: {
-    borderRadius: 44,
-    borderWidth: 8,
-    overflow: 'hidden',
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.35,
-        shadowRadius: 28,
-        elevation: 16,
-      },
-    }),
-  },
-  phoneTopBezel: {
-    height: 28,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  dynamicIsland: {
-    width: 96,
-    height: 20,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingRight: 10,
-  },
-  cameraLens: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#374151',
-  },
-  phoneScreen: {
+  cleanMobileContainer: {
     flex: 1,
     width: '100%',
+    maxWidth: 440,
     height: '100%',
     overflow: 'hidden',
-  },
-  phoneBottomBezel: {
-    height: 18,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  homeIndicatorPill: {
-    width: 120,
-    height: 4,
-    borderRadius: 2,
   },
 });
