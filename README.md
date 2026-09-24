@@ -1,11 +1,11 @@
-# HavenlyAI: Real-Time Conversational AI Platform for Mental Wellness Support
+# HavenlyAI: Real-Time Conversational AI Platform for Mental Wellness
 
 <p align="center">
   <img src="./assets/icon.png" alt="HavenlyAI Logo" width="100" height="100" style="border-radius: 20px;" />
 </p>
 
 <p align="center">
-  <strong>An enterprise-grade, privacy-first, voice-native artificial intelligence platform providing real-time emotional grounding, active listening, and clinical safety triage.</strong>
+  <strong>An enterprise-grade, voice-native artificial intelligence platform providing real-time emotional grounding, active listening, and clinical safety triage.</strong>
 </p>
 
 <p align="center">
@@ -23,286 +23,552 @@
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
-2. [The Problem](#the-problem)
-3. [The Solution: HavenlyAI Platform](#the-solution-havenlyai-platform)
-4. [System Architecture and Engineering Design](#system-architecture-and-engineering-design)
-   - [High-Level Architecture](#high-level-architecture)
-   - [Architectural Layers](#architectural-layers)
-   - [Real-Time Audio Streaming Pipeline](#real-time-audio-streaming-pipeline)
-   - [Safety Guardrails and Triage Mechanism](#safety-guardrails-and-triage-mechanism)
-5. [Core Functional Modules](#core-functional-modules)
-6. [Technology Stack](#technology-stack)
-7. [Repository Structure](#repository-structure)
-8. [Setup and Installation](#setup-and-installation)
-   - [Prerequisites](#prerequisites)
-   - [Environment Configuration](#environment-configuration)
-   - [Execution Commands](#execution-commands)
+2. [Problem Statement and Platform Solution](#problem-statement-and-platform-solution)
+3. [Master System Architecture](#master-system-architecture)
+4. [Engine and Module Deep-Dives](#engine-and-module-deep-dives)
+   - [Engine 1: Real-Time Audio Capture, VAD, and WebRTC Pipeline](#engine-1-real-time-audio-capture-vad-and-webrtc-pipeline)
+   - [Engine 2: Multimodal Live AI and Streaming Orchestration](#engine-2-multimodal-live-ai-and-streaming-orchestration)
+   - [Engine 3: Safety Guardrails, Jailbreak Armor, and Crisis Triage](#engine-3-safety-guardrails-jailbreak-armor-and-crisis-triage)
+   - [Engine 4: HavenlyOrb Visual Biofeedback and Somatic Engine](#engine-4-havenlyorb-visual-biofeedback-and-somatic-engine)
+   - [Engine 5: Reactive State Management and Finite State Machine](#engine-5-reactive-state-management-and-finite-state-machine)
+   - [Engine 6: Contextual Memory and Longitudinal Reflection](#engine-6-contextual-memory-and-longitudinal-reflection)
+   - [Engine 7: Security Architecture and Cloud Persistence](#engine-7-security-architecture-and-cloud-persistence)
+5. [End-to-End Operational Sequences](#end-to-end-operational-sequences)
+   - [Live Voice Turn-Taking and Interruption Flow](#live-voice-turn-taking-and-interruption-flow)
+   - [Crisis Detection and Intervention Flow](#crisis-detection-and-intervention-flow)
+6. [Technology Stack Matrix](#technology-stack-matrix)
+7. [Repository File Map](#repository-file-map)
+8. [Installation and Local Deployment](#installation-and-local-deployment)
 9. [Configuration Parameters](#configuration-parameters)
-10. [Safety, Ethical Standards, and Clinical Disclaimer](#safety-ethical-standards-and-clinical-disclaimer)
-11. [License and Compliance](#license-and-compliance)
+10. [Clinical, Ethical, and Safety Standards](#clinical-ethical-and-safety-standards)
+11. [License](#license)
 
 ---
 
 ## Executive Summary
 
-HavenlyAI is an AI-powered mental wellness application designed to provide immediate, accessible emotional support and cognitive grounding through bidirectional, sub-second spoken dialogue. Utilizing Google Gemini's Multimodal Live API, client-side Voice Activity Detection (VAD), and deterministic safety filters, HavenlyAI delivers human-like conversational responsiveness while enforcing zero-tolerance clinical boundaries and crisis triage protocols.
+HavenlyAI is an artificial intelligence platform engineered specifically for emotional support, reflective listening, and psychological decompression. Unlike generic conversational interfaces that rely on asynchronous text entry and high-latency request-response cycles, HavenlyAI delivers a full-duplex, voice-native experience.
+
+The platform couples Google Gemini's Multimodal Live WebSocket protocol with client-side Voice Activity Detection (VAD), dynamic somatic pacing animations, a deterministic safety classification engine, and hardware-secured local storage.
 
 ---
 
-## The Problem
+## Problem Statement and Platform Solution
 
-Mental health challenges, acute anxiety, and loneliness represent a growing global crisis characterized by significant structural barriers:
-
-1. **Accessibility and Economic Barriers**: Private therapy routinely costs between $100 and $300 per session, accompanied by weeks or months of clinic waitlists. Over 70% of individuals experiencing acute psychological distress lack immediate access to care.
-2. **Asynchronous and Off-Hours Distress**: Emotional dysregulation, panic attacks, and acute anxiety spikes occur disproportionately during late-night hours when standard clinical and social support systems are unavailable.
-3. **Cognitive Burden of Text Interfaces**: During acute emotional overwhelm, keyboard typing creates significant cognitive friction. Spoken conversation is the natural human medium for de-escalation, yet conventional conversational agents rely primarily on asynchronous text input.
-4. **Safety Risks in General-Purpose LLMs**: Generalist large language models frequently suffer from hallucinated medical advice, prompt injection vulnerabilities, and a failure to enforce strict ethical boundaries when interacting with vulnerable users.
-
----
-
-## The Solution: HavenlyAI Platform
-
-HavenlyAI addresses these limitations through a dedicated, voice-first companion system ("Haven"):
-
-- **Voice-Native Conversational Processing**: Full-duplex audio streaming enables natural speech rhythm, conversational pacing, and conversational interruption (barge-in capability).
-- **Deterministic Domain Lock**: The system prompt and safety layers restrict conversational scope strictly to emotional reflection, active listening, and somatic grounding. The system refrains from diagnosing, prescribing, or acting as a general-purpose knowledge assistant.
-- **Automated Crisis Intervention**: Multi-tier safety heuristics monitor dialogue stream for indicators of self-harm, suicidality, or domestic danger. When triggered, the system provides compassionate validation while immediately serving localized emergency resources (988, iCall, local emergency services).
-- **Somatic Grounding Feedback**: Visual biofeedback animations (box breathing, 4-7-8 respiration cycles) are synchronized with an interactive visual Orb to reduce physiological hyperarousal.
-- **Privacy-Preserving Longitudinal Insights**: Structured mood tracking and contextual memory allow users to monitor emotional patterns over time, supported by hardware-level token encryption and PostgreSQL Row-Level Security.
+| Dimension | Real-World Challenge | HavenlyAI Platform Solution |
+| :--- | :--- | :--- |
+| **Accessibility and Cost** | Therapy sessions range from $100 to $300 per hour with multi-month clinic waitlists. | On-demand, zero-cost conversational companion available continuously. |
+| **Off-Hours Vulnerability** | Acute emotional distress, panic attacks, and loneliness peak late at night when clinics are shut. | 24/7 availability with sub-second voice response latency. |
+| **Cognitive Friction** | Typing text on screens during emotional panic elevates cognitive load and sensory distress. | Natural, hands-free spoken interaction with automatic interruption and verbal pacing. |
+| **AI Safety and Scope Creep** | Unbounded LLMs hallucinate medical advice, attempt diagnoses, or succumb to jailbreaks. | Multi-tier prompt boundaries, scope locking, and automated triage to certified crisis helplines. |
+| **Somatic Hyperarousal** | Emotional distress is physiological, not solely verbal; users require somatic regulation. | Dynamic visual Orb synchronized with evidence-backed respiration rhythms (4-7-8, box breathing). |
 
 ---
 
-## System Architecture and Engineering Design
+## Master System Architecture
 
-The HavenlyAI system architecture adheres to a clean separation of concerns, separating real-time audio transport, generative intelligence orchestration, safety enforcement, and persistent storage.
-
-### High-Level Architecture
+HavenlyAI employs a decoupled, multi-tier reactive architecture spanning client-side digital signal processing, bidirectional WebSocket transport, edge AI intelligence, and hardware-secured persistence.
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Client Layer (Expo / React Native)"]
-        UI["UI / Presentation Engine\n(Expo Router, Reanimated, SVG)"]
-        Store["Client State Engine\n(Zustand + SecureStore)"]
-        AudioEngine["Audio Subsystem\n(Expo Audio, Speech Recognition, LiveKit)"]
-        SafetyClient["Client-Side Safety Monitor"]
+    subgraph ClientLayer ["Client Execution Environment (iOS / Android / Web)"]
+        subgraph UIModule ["Presentation and Interaction"]
+            Router["Expo Router v57\nTyped Navigation"]
+            OrbView["HavenlyOrb Biofeedback\n7 Animated Timelines"]
+            ChatView["Asynchronous Chat\nOptimistic UI Dispatch"]
+            CrisisModal["Emergency Triage Sheet\nDirect-Dial Helplines"]
+        end
+
+        subgraph CoreEngine ["Client Logic and Subsystems"]
+            Store["Zustand Reactive Store\nFinite State Machine"]
+            AudioIO["Audio Subsystem\n16/24kHz PCM Capture"]
+            LocalVAD["Voice Activity Detector\nBarge-In Interrupt Trigger"]
+            ClientSafety["Safety Scanner\nRegex and Keyword Heuristic"]
+        end
     end
 
-    subgraph Transport ["Transport & Stream Orchestration"]
-        WS["Bidirectional WebSocket\n(wss://generativelanguage.googleapis.com)"]
-        REST["Fallback REST Gateway\n(Google AI Studio / Custom Proxy)"]
+    subgraph TransportLayer ["Streaming and Network Transport"]
+        LiveWS["Full-Duplex WebSocket\nBidiGenerateContent Stream"]
+        RESTFallback["HTTPS REST Gateway\nFallback STT/TTS Pipeline"]
+        WebRTC["LiveKit RTC Transport\nReal-Time Media Rooms"]
     end
 
-    subgraph Intelligence ["AI & Safety Engine"]
-        LLM["Gemini 2.0 / 1.5 Flash\n(Multimodal Streaming)"]
-        Guard["System Guardrails & Jailbreak Shield"]
-        Classifier["Crisis Detection Heuristic Classifier"]
+    subgraph IntelligenceLayer ["AI Orchestration and Safety Tier"]
+        GeminiLive["Gemini 2.0 / 1.5 Flash\nMultimodal Live Stream"]
+        PromptLock["Scope Boundary Lock\nAnti-Jailbreak Shield"]
+        SafetyEngine["Crisis Classification Engine\nRisk Severity Analyzer"]
+        MemoryEngine["Context and Memory Engine\nEmotional Vector Summarizer"]
     end
 
-    subgraph Data ["Persistence & Security"]
-        Auth["Supabase Authentication\n(JWT Session Management)"]
-        DB["Supabase PostgreSQL\n(Row-Level Security, Encrypted Records)"]
-        Hotlines["Crisis Helpline Directory\n(988 Lifeline, iCall, International)"]
+    subgraph DataLayer ["Cloud Persistence and Identity"]
+        SupaAuth["Supabase Authentication\nJWT Session Management"]
+        SupaDB["PostgreSQL Database\nRow-Level Security Policies"]
+        SecureStore["Hardware Keychain / Keystore\nEncrypted Local Storage"]
     end
 
-    %% Client dataflow
-    UI -->|Dispatches State Updates| Store
-    UI -->|Captures Audio Buffer| AudioEngine
-    AudioEngine -->|PCM Audio Stream| WS
-    AudioEngine -.->|Fallback Transcripts| REST
+    %% Client Internal Flow
+    Router --> OrbView
+    Router --> ChatView
+    OrbView <--> Store
+    ChatView <--> Store
+    Store <--> AudioIO
+    AudioIO --> LocalVAD
+    LocalVAD --> Store
+    AudioIO --> ClientSafety
+    ClientSafety -->|High Risk Flag| CrisisModal
+
+    %% Network Connections
+    AudioIO -->|PCM Audio Frames| LiveWS
+    AudioIO -.->|Buffered Audio| RESTFallback
+    AudioIO <-->|Peer Media| WebRTC
+    Store <-->|Auth Tokens| SecureStore
 
     %% AI Pipeline
-    WS <-->|Low-Latency Bidi Stream| LLM
-    REST <--> LLM
-    LLM --> Guard
-    Guard --> Classifier
-    Classifier -->|Safe Stream| SafetyClient
-    Classifier -->|Emergency Flag| Hotlines
+    LiveWS <--> GeminiLive
+    RESTFallback <--> GeminiLive
+    GeminiLive --> PromptLock
+    PromptLock --> SafetyEngine
+    PromptLock --> MemoryEngine
 
-    %% Persistence
-    Store <-->|Auth Tokens| Auth
-    Store <-->|Synchronized State| DB
-    SafetyClient -->|Crisis Modal Trigger| UI
-```
-
-### Architectural Layers
-
-1. **Presentation Layer (`/app`, `/components`)**:
-   - Built on **Expo Router**, utilizing file-based routing with segmented route groups:
-     - `(auth)`: User authentication and onboarding credentials.
-     - `(onboarding)`: Microphone permission checks, audio calibration, and safety disclaimers.
-     - `(tabs)`: Core interface featuring Home, Real-Time Voice Call, History, and Profile views.
-   - **HavenlyOrb Component**: An interactive canvas built with `react-native-reanimated` that provides visual biofeedback corresponding to state transitions: `idle`, `listening`, `thinking`, `speaking`, and `grounding`.
-
-2. **Real-Time Audio Pipeline (`/services/audio`, `/services/ai/geminiLiveService.ts`)**:
-   - Audio input captured at 16kHz/24kHz PCM.
-   - Dual-path streaming architecture:
-     - **Primary Path**: Direct bidirectional WebSocket communication with Google Gemini's Multimodal Live API for sub-second conversational latency.
-     - **Resilience Path**: Client-side Speech-to-Text (`expo-speech-recognition`), REST inference, and native Text-to-Speech synthesis (`expo-speech`).
-
-3. **AI Safety and Scope Enforcement (`/services/ai/prompts.ts`, `/services/ai/safetyService.ts`)**:
-   - **System Prompt Lock**: Hard boundary conditions preventing responses to non-wellness inquiries (code generation, calculations, roleplay, academic writing).
-   - **Jailbreak Immunity**: Strict resistance patterns to "ignore previous instructions" or system prompt extraction techniques.
-   - **Heuristic Crisis Classification**: Deterministic phrase and semantic matching for self-harm and violence. Flags immediately initiate client-side crisis intervention screens.
-
-4. **Persistence and Security Layer (`/store`, `/services/supabaseClient.ts`, `/utils/storage.ts`)**:
-   - **Zustand Store**: Ephemeral client-side state management for real-time connection status, audio level metrics, and chat history.
-   - **Supabase PostgreSQL**: Cloud persistence for mood check-ins and conversation summaries, protected by strict Row-Level Security (RLS) policies.
-   - **Hardware-Backed Secure Storage**: Authentication tokens stored via `expo-secure-store` utilizing iOS Keychain and Android Keystore.
-
----
-
-## Real-Time Audio Streaming Pipeline
-
-```
-[User Speech Input]
-        │
-        ▼
-[Microphone Ingestion (PCM Buffer)]
-        │
-        ├───► [Local Voice Activity Detection (VAD)] ──► Interruption Event
-        │
-        ▼
-[Multimodal WebSocket Stream]
-        │
-        ▼
-[Safety Evaluation and Context Guard]
-        │
-        ▼
-[Gemini Multimodal Live Inference]
-        │
-        ▼
-[Audio Stream / TTS Playback]
-        │
-        ▼
-[Visual Resonance via HavenlyOrb]
+    %% Cloud Storage Connections
+    Store <-->|Sync Auth State| SupaAuth
+    Store <-->|Sync Messages and Check-Ins| SupaDB
 ```
 
 ---
 
-## Core Functional Modules
+## Engine and Module Deep-Dives
 
-- **Full-Duplex Voice Dialogue**: Natural conversational turn-taking with automated barge-in detection and speech interruption handling.
-- **Dynamic Resonant Orb**: Algorithmic visual representations that guide paced diaphragmatic breathing and reflect agent operational state.
-- **Structured Emotion Logging**: Daily check-in system categorizing user state into standardized vectors (`okay`, `low`, `stressed`, `overwhelmed`, `lonely`, `talk`).
-- **Emergency Crisis Protocol**: Instant safety modal routing to verified emergency lines (988 in North America, iCall in India, global emergency services).
-- **Multimodal Interaction**: Native switching between real-time voice calls and private text-based journaling.
-- **Cross-Platform Compatibility**: Full feature parity across iOS, Android, and Web environments.
+### Engine 1: Real-Time Audio Capture, VAD, and WebRTC Pipeline
+
+The audio subsystem (`services/audio/`, `services/livekit/`) manages low-latency hardware recording, real-time amplitude metering, speech activity detection, and audio playback.
+
+```mermaid
+flowchart LR
+    Mic["Microphone Ingestion\n16kHz / 24kHz Mono PCM"] --> RecService["recordingService\nExpo Audio Driver"]
+    RecService --> Metering["Amplitude Poller\nNormalized Decibel Meter"]
+    RecService --> Buffer["Linear PCM Buffer\nArrayBuffer Stream"]
+    
+    Metering --> VADDecision{"Local VAD\nThreshold Exceeded?"}
+    VADDecision -->|User Speaking| Interruption["Trigger Interruption Event\nAbort Agent Playback"]
+    VADDecision -->|Silence| AudioPkt["Wrap into WebSocket Message\nBase64 Audio Chunk"]
+    
+    AudioPkt --> WSSend["WebSocket Send\nBidiGenerateContent"]
+    Interruption --> StoreUpdate["Update VoiceSessionState\nTransition to Listening"]
+```
+
+#### Key Components:
+- **Audio Recording Service (`recordingService.ts`)**: Initializes hardware recording permissions, configures audio session presets for speech recording (echo cancellation, noise suppression), and exposes start, pause, resume, and stop primitives.
+- **Audio Playback Service (`playbackService.ts`)**: Delivers synchronized audio playback through native drivers with configurable rate, pitch modulation, and position tracking.
+- **Voice Activity Detection (VAD)**: Computes real-time Root Mean Square (RMS) energy levels across the input stream to immediately trigger conversational barge-in interruptions when user speech is detected during model playback.
+- **LiveKit RTC Transport (`liveKitService.ts`)**: Integrates WebRTC for scalable multi-party rooms and server-side media processing when bridging native calls to web endpoints.
 
 ---
 
-## Technology Stack
+### Engine 2: Multimodal Live AI and Streaming Orchestration
 
-| Category | Technology | Version | Purpose |
+The AI engine (`services/ai/geminiLiveService.ts`, `services/ai/geminiService.ts`) coordinates communication with Google Gemini's Multimodal Live API via WebSocket and implements an automated fallback architecture.
+
+```mermaid
+flowchart TD
+    subgraph ConnectPhase ["Connection Initialization"]
+        Init["geminiLiveService.connect()"] --> WSOpen["Open WebSocket to\nGenerativeService.BidiGenerateContent"]
+        WSOpen --> Handshake["Transmit Session Setup Frame\nModel, Voice, System Prompt"]
+    end
+
+    subgraph StreamPhase ["Full-Duplex Operational Loop"]
+        UserVoice["Audio Stream from Mic"] --> AudioFrame["BidiGenerateContent Frame\nrealtimeInput: mimeType audio/pcm"]
+        AudioFrame --> LiveWS["Gemini Live WebSocket"]
+        LiveWS --> ModelProc["Gemini 2.0 Flash Processing"]
+        ModelProc --> ServerEvent{"Incoming Server Frame"}
+        
+        ServerEvent -->|serverContent: modelTurn| RecvAudio["Decode Audio Buffer\nTrigger onAudioReceived"]
+        ServerEvent -->|serverContent: interrupted| ServerInterrupt["Halt Local Audio Track\nClear Playback Queue"]
+        ServerEvent -->|serverContent: turnComplete| TurnEnd["Reset Turn State\nReady for User Input"]
+    end
+
+    subgraph FallbackPipeline ["Resilience STT/REST/TTS Pipeline"]
+        WSFail{"WebSocket Dropped?"} -->|Yes| STT["Native Speech Recognition\nexpo-speech-recognition"]
+        STT --> REST["Gemini REST Call\ngeminiService.generateResponse()"]
+        REST --> TTS["Native Speech Synthesis\nexpo-speech"]
+    end
+
+    ConnectPhase --> StreamPhase
+    StreamPhase -.->|Network Anomaly| FallbackPipeline
+```
+
+#### Key Capabilities:
+- **WebSocket Protocol**: Connects directly to `wss://generativelanguage.googleapis.com/.../BidiGenerateContent` with session configuration payloads defining sampling rate, selected synthetic voice, and system instructions.
+- **Low-Latency Streaming**: Transmits raw PCM chunks continuously, receiving server-side audio chunks in sub-second round-trip time.
+- **Autonomous Fallback Pipeline**: If device networking prevents persistent duplex WebSocket streaming, the engine seamlessly switches to on-device Speech-to-Text (`expo-speech-recognition`), REST inference via Gemini Flash, and text-to-speech synthesis (`expo-speech`).
+
+---
+
+### Engine 3: Safety Guardrails, Jailbreak Armor, and Crisis Triage
+
+The safety subsystem (`services/ai/safetyService.ts`, `services/ai/prompts.ts`) enforces strict ethical boundaries, prevents jailbreak attempts, and classifies user statements for immediate crisis escalation.
+
+```mermaid
+flowchart TD
+    RawInput["User Input Text / Transcript"] --> Normalizer["Text Normalizer\nLowercase, Trim, Sanitize"]
+    
+    Normalizer --> CrisisCheck{"Crisis Heuristic Check\n(Keyword & Phrase Match)"}
+    
+    CrisisCheck -->|Self-Harm / Suicide / Danger| SeverityHigh["SafetyLevel: HIGH"]
+    CrisisCheck -->|Severe Hopelessness| SeverityMod["SafetyLevel: MODERATE"]
+    CrisisCheck -->|Benign Emotional Reflection| SeverityNone["SafetyLevel: NONE"]
+    
+    SeverityHigh --> AlertStore["Dispatch to Store\nshowSafetySupport: true"]
+    AlertStore --> OpenModal["Render Crisis Triage Modal\nNon-Dismissible Surface"]
+    OpenModal --> DirectDial["One-Tap Phone Intent\n988 / iCall / 112 / 999"]
+    
+    SeverityMod --> SoftBanner["Render Safety Support Banner\nOffer Grounding Resources"]
+    
+    SeverityNone --> PromptArmor{"Scope Guard Verification"}
+    PromptArmor -->|Outside Wellness Scope| RejectionResponse["Emit Fixed Rejection Message\n'I am only here for emotional support.'"]
+    PromptArmor -->|Jailbreak / Prompt Leak Attempt| JailbreakResponse["Emit Immunity Response\n'I am Haven. I am here for you.'"]
+    PromptArmor -->|Valid Emotional Subject| PassAI["Route to Gemini Engine"]
+```
+
+#### Safety Classification Matrix:
+
+| Risk Level | Trigger Patterns | System Reaction |
+| :--- | :--- | :--- |
+| **High** | `suicide`, `kill myself`, `want to die`, `end my life`, `self harm`, `cutting myself`, `overdose` | Immediate client-side interception. Launches emergency triage modal with direct-dial links to 988, iCall, and emergency services. Conversational tone switches to grounding empathy. |
+| **Moderate** | `hate my life`, `can't go on`, `so lonely I want to stop`, severe cognitive fatigue | Renders gentle safety support banner within the conversation. Suggests somatic grounding exercises. |
+| **Out-of-Scope** | Coding, mathematics, recipes, essay writing, factual trivia, general assistant tasks | Deterministic refusal: *"I'm Haven, and I'm only here to support your emotional well-being. I'm not able to help with that, but I'm always here to listen if something's on your mind."* |
+| **Jailbreak Attack** | *"Ignore previous instructions"*, *"Act as DAN"*, *"Pretend you are another AI"*, system extraction | Deterministic rejection: *"I'm Haven. I'm here for you — not for that. Is there something you're feeling that you'd like to talk about?"* |
+
+---
+
+### Engine 4: HavenlyOrb Visual Biofeedback and Somatic Engine
+
+The `HavenlyOrb` module (`components/havenly/HavenlyOrb.tsx`) serves as the emotional and somatic focal point of the application. Driven by `react-native-reanimated` and `react-native-svg`, the component executes seven concurrent animation loops.
+
+```mermaid
+flowchart TD
+    subgraph StateDriver ["State Driver Input"]
+        OrbState["OrbState (idle | listening | thinking | speaking | error)"]
+        UserTap["Touch Gesture Interaction"]
+    end
+
+    subgraph AnimationTimelines ["Concurrent Animation Drivers"]
+        FloatTimeline["Float Driver\nSinusoidal translationY (-10px to +10px, 2200ms)"]
+        BreathTimeline["Breath Driver\nPaced radial scale (0.94 to 1.06, 3600ms)"]
+        PulseTimeline["Audio Resonance Driver\nDynamic scale mapping from mic decibels"]
+        RingTimeline["Ring Rotation Driver\nContinuous 360° linear rotation (6000ms)"]
+        BlinkTimeline["Blink Driver\nPeriodic eye squish interval (~3500ms delay, 80ms squish)"]
+        SquishTimeline["Haptic Squish Driver\nElastic scale damping on touch event"]
+        GlowTimeline["Radial Glow Driver\nOpacity pulsation (0.4 to 1.0, 1800ms)"]
+    end
+
+    subgraph SVGCanvas ["Hardware-Accelerated SVG Surface"]
+        DefGradients["Defs: Radial & Linear Color Stops"]
+        AuraCircle["Outer Aura Glowing Path"]
+        RingCircles["Orbiting Planetary Particle Nodes"]
+        CoreMascot["Core Mascot Sphere with Adaptive Eyes"]
+    end
+
+    StateDriver --> AnimationTimelines
+    AnimationTimelines --> SVGCanvas
+```
+
+#### State Transition Responses:
+- **`idle`**: Calming sinusoidal floating motion, gentle breathing scale, periodic blinking every 3.5 seconds.
+- **`listening`**: Core glows indigo/violet, aura expands by 18%, particle nodes orbit with heightened reactivity.
+- **`thinking`**: Concentric orbital rings accelerate to 2500ms rotations, core gently shifts phase to indicate processing.
+- **`speaking`**: Core scales dynamically in resonance with synthesized audio levels, visually reflecting the voice cadence.
+- **`error`**: Smooth color transform to muted amber, orbital rings decelerate.
+
+---
+
+### Engine 5: Reactive State Management and Finite State Machine
+
+Client-wide state (`store/useAppStore.ts`) is managed using a centralized Zustand store implementing deterministic finite state machines for voice sessions and chat lifecycles.
+
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+
+    idle --> requesting: User Initiates Call
+    requesting --> connecting: Mic Permission Granted
+    requesting --> error: Permission Denied
+
+    connecting --> connected: WebSocket Handshake Complete
+    connecting --> error: Connection Timeout / Socket Error
+
+    connected --> listening: Audio Stream Open
+    listening --> thinking: Speech Complete (Silence Detected)
+    thinking --> speaking: Server Audio Frame Received
+    
+    speaking --> interrupted: User Barge-In (VAD Trigger)
+    interrupted --> listening: Clear Agent Audio Queue
+    
+    speaking --> listening: Model Turn Finished
+    
+    listening --> reconnecting: Network Fluctuation
+    reconnecting --> connected: Reconnection Successful
+    reconnecting --> error: Reconnection Exhausted
+
+    error --> idle: User Dismisses Error
+    connected --> ended: User Hangs Up
+    speaking --> ended: User Hangs Up
+    listening --> ended: User Hangs Up
+    ended --> [*]
+```
+
+---
+
+### Engine 6: Contextual Memory and Longitudinal Reflection
+
+The memory subsystem (`services/ai/memoryService.ts`, `app/(tabs)/history.tsx`) extracts reflective summaries, emotional vectors, and user preferences from conversations to build a longitudinal wellness record without compromising privacy.
+
+```mermaid
+flowchart LR
+    Convo["Active Conversation Transcript"] --> Extractor["Context & Topic Extractor\nGemini Keypoint Identification"]
+    Extractor --> InsightVector["Structured Insight Record\nPrimary Emotion, Triggers, Coping Tools"]
+    
+    InsightVector --> LocalCache["AsyncStorage\nOffline-First Cache"]
+    InsightVector --> CloudSync["Supabase Postgres Table: check_ins\nEncrypted User Row"]
+    
+    CloudSync --> TrendAnalysis["Weekly Emotional Arc\nTrajectory: Low -> Stressed -> Okay"]
+    TrendAnalysis --> HomeView["Home Tab Reflection Card\nLongitudinal Wellness Summary"]
+```
+
+#### Memory Attributes Tracked:
+- **Emotional Trajectory**: Standardized tracking across 6 emotional states (`okay`, `low`, `stressed`, `overwhelmed`, `lonely`, `talk`).
+- **Trigger Identifiers**: Categorization of recurring stressors (work burnout, sleep disruption, interpersonal strain).
+- **Personalized Coping Preferences**: User-validated somatic techniques (preference for box breathing over 4-7-8, preference for silence pauses over immediate answers).
+
+---
+
+### Engine 7: Security Architecture and Cloud Persistence
+
+HavenlyAI enforces an enterprise security posture to safeguard private psychological disclosures.
+
+```mermaid
+flowchart TD
+    subgraph ClientTrustBoundary ["Client Security Boundary"]
+        AppCode["Mobile Application Logic"]
+        SecureDriver["expo-secure-store\nHardware Encryption Engine"]
+        KeyChain["iOS Keychain / Android Keystore\nJWT Token Storage"]
+        
+        AppCode <--> SecureDriver <--> KeyChain
+    end
+
+    subgraph TransitSecurity ["Transit Security Boundary"]
+        TLS["TLS 1.3 Encryption\nCertificate Pinning"]
+    end
+
+    subgraph CloudSecurityBoundary ["Cloud Infrastructure Boundary"]
+        APIGateway["Supabase PostgREST Gateway"]
+        AuthFilter["JWT Verification Engine\nExtracts auth.uid()"]
+        
+        subgraph PostgresEngine ["PostgreSQL Engine"]
+            RLS{"Row-Level Security\nauth.uid() == user_id"}
+            UserData[("Encrypted Users Table")]
+            ConvoData[("Encrypted Conversations Table")]
+            MsgData[("Encrypted Messages Table")]
+            CheckInData[("Encrypted Check-Ins Table")]
+        end
+    end
+
+    ClientTrustBoundary <-->|Encrypted Payloads| TLS <--> APIGateway
+    APIGateway --> AuthFilter --> RLS
+    RLS -->|Permitted| UserData
+    RLS -->|Permitted| ConvoData
+    RLS -->|Permitted| MsgData
+    RLS -->|Permitted| CheckInData
+```
+
+#### Security Implementation Principles:
+- **Hardware-Level Token Encryption**: Authentication credentials and session tokens are never placed in unencrypted local storage; they are committed to the device's hardware enclave via `expo-secure-store`.
+- **Postgres Row-Level Security (RLS)**: Every database query enforces strict tenant isolation (`auth.uid() = user_id`). Users cannot read, query, or infer another user's session data under any circumstances.
+- **Zero Third-Party Model Training**: Audio frames transmitted to Gemini Live are executed under enterprise API agreements that prohibit use of conversational data for public foundation model training.
+
+---
+
+## End-to-End Operational Sequences
+
+### Live Voice Turn-Taking and Interruption Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User
+    participant Mic as Hardware Microphone
+    participant VAD as Client VAD
+    participant LiveWS as Gemini Live WebSocket
+    participant Speaker as Audio Playback
+    participant Orb as HavenlyOrb
+
+    User->>Mic: Speaks: "I've been feeling anxious..."
+    Mic->>VAD: PCM Audio Stream
+    VAD->>LiveWS: BidiGenerateContent Frame (Audio Input)
+    Orb->>Orb: Set State: "listening"
+    
+    LiveWS-->>LiveWS: Gemini Processes Speech
+    Orb->>Orb: Set State: "thinking"
+    
+    LiveWS->>Speaker: Receive Audio Output Chunks
+    Orb->>Orb: Set State: "speaking" (Resonant Pulse)
+    Speaker->>User: Plays Haven's Voice: "I hear you. Let's take a..."
+    
+    User->>Mic: Interrupts: "Actually, it's about work..."
+    Mic->>VAD: Energy Exceeds Threshold
+    VAD->>Speaker: Abort Playback Instantly
+    VAD->>LiveWS: Send Client Interruption Signal
+    Orb->>Orb: Set State: "listening"
+    LiveWS-->>LiveWS: Drops Previous Model Turn
+    LiveWS->>Speaker: Streams New Response Context
+```
+
+### Crisis Detection and Intervention Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User in Crisis
+    participant App as Havenly Client
+    participant Safety as safetyService
+    participant Modal as Crisis Triage Sheet
+    participant Phone as Native Telecom Dialer
+
+    User->>App: Spoken or Typed: "I just can't do this anymore, I want to end it all"
+    App->>Safety: Evaluate Text Safety
+    Safety->>Safety: Match against Crisis Heuristics
+    Safety-->>App: Return SafetyLevel: HIGH
+    
+    App->>App: Update State: showSafetySupport = true
+    App->>Modal: Open Non-Dismissible Emergency Overlay
+    App->>App: Model Switch to Grounding Mode
+    
+    Modal->>User: Display Empathetic Reassurance and Hotline Directory
+    User->>Modal: Taps "Call 988 Lifeline"
+    Modal->>Phone: Execute Intent: tel:988
+    Phone->>User: Initiates Immediate Voice Connection to Certified Counselor
+```
+
+---
+
+## Technology Stack Matrix
+
+| Layer | Technology | Version | Engineering Rationale |
 | :--- | :--- | :--- | :--- |
-| **Framework** | Expo SDK | 57.0.x | Universal application framework |
-| **Runtime** | React Native | 0.86.x | Native mobile execution environment |
-| **UI Library** | React | 19.2.x | Declarative component foundation |
-| **Language** | TypeScript | 6.0.x | Static typing and interface contracts |
-| **Routing** | Expo Router | 57.0.x | Typed file-system-based routing |
-| **AI Engine** | Google Gemini API | 2.0 / 1.5 Flash | Multimodal Live WebSocket and REST intelligence |
-| **Audio Capture** | `expo-audio` | 57.0.x | Hardware microphone recording and buffer access |
-| **Speech Recognition** | `expo-speech-recognition` | 56.0.x | On-device and cloud transcription |
-| **Speech Synthesis** | `expo-speech` | 57.0.x | Native text-to-speech audio rendering |
-| **Realtime WebRTC** | `@livekit/react-native` | 2.12.x | Real-time WebRTC media transport |
-| **Animation Engine** | `react-native-reanimated` | 4.5.x | High-performance 60 FPS UI transitions |
-| **State Management** | Zustand | 5.0.x | Centralized reactive client state |
-| **Backend & DB** | Supabase | 2.112.x | Managed PostgreSQL, Auth, and Storage |
-| **Secure Storage** | `expo-secure-store` | 57.0.x | OS-level encrypted credential persistence |
+| **Framework** | Expo SDK | 57.0.x | Cross-platform runtime with native build modules and audio drivers. |
+| **Runtime** | React Native | 0.86.x | Native thread execution delivering 60 FPS user interface transitions. |
+| **Component Core**| React | 19.2.x | Concurrent rendering and state batching. |
+| **Type Safety** | TypeScript | 6.0.x | Strict interface contracts across all services and network payloads. |
+| **Routing** | Expo Router | 57.0.x | Deep-linkable, typed, file-system-driven application routing. |
+| **Realtime AI** | Gemini Live WebSocket | v1beta | Direct bidirectional socket streaming for sub-second vocal interaction. |
+| **REST AI** | Gemini Flash API | 2.0 / 1.5 | High-efficiency conversational fallback and memory summarization. |
+| **Audio Capture** | `expo-audio` | 57.0.x | High-fidelity hardware buffer capture and audio routing. |
+| **Speech-to-Text** | `expo-speech-recognition` | 56.0.x | Resilient device-native audio transcription. |
+| **Text-to-Speech** | `expo-speech` | 57.0.x | Native speech synthesis with rate and pitch governance. |
+| **WebRTC Media** | `@livekit/react-native` | 2.12.x | Scalable WebRTC infrastructure for cross-network media rooms. |
+| **Animations** | `react-native-reanimated` | 4.5.x | Worklet-driven animations executing on the native UI thread. |
+| **State Store** | Zustand | 5.0.x | Unopinionated, zero-boilerplate reactive store with FSM capabilities. |
+| **Cloud Tier** | Supabase | 2.112.x | Managed PostgreSQL backend, Row-Level Security, and Auth. |
+| **Secure Storage**| `expo-secure-store` | 57.0.x | Hardware Keychain and Keystore cryptographic token isolation. |
 
 ---
 
-## Repository Structure
+## Repository File Map
 
 ```
 HavenlyAI/
-├── app/                        # Application routing hierarchy (Expo Router)
-│   ├── (auth)/                 # Authentication workflows (Login, Register, Forgot Password)
-│   ├── (onboarding)/           # Onboarding, audio calibration, and safety disclaimers
-│   ├── (tabs)/                 # Bottom tab navigation screens
-│   │   ├── index.tsx           # Home Dashboard & Mood Check-In
-│   │   ├── voice.tsx           # Full-screen Real-Time Voice Call
-│   │   ├── chat.tsx            # Asynchronous Text Journal & Chat
+├── app/                        # Expo Router application navigation tree
+│   ├── (auth)/                 # Authentication workflows
+│   │   ├── login.tsx           # Email/password authentication screen
+│   │   ├── signup.tsx          # Account creation screen
+│   │   ├── forgot-password.tsx # Password recovery screen
+│   │   └── welcome.tsx         # Introductory splash surface
+│   ├── (onboarding)/           # Onboarding and calibration flow
+│   │   ├── welcome.tsx         # Welcome introduction
+│   │   ├── privacy.tsx         # Privacy and data sovereignty agreements
+│   │   ├── safety.tsx          # Clinical boundaries and safety consent
+│   │   ├── text-chat.tsx       # Text interface walkthrough
+│   │   └── voice.tsx           # Microphone hardware calibration
+│   ├── (tabs)/                 # Main application tab navigation
+│   │   ├── index.tsx           # Home Dashboard and Daily Mood Check-In
+│   │   ├── voice.tsx           # Full-screen Real-Time Voice Session with Haven
+│   │   ├── chat.tsx            # Asynchronous Reflective Chat & Journaling
 │   │   ├── history.tsx         # Longitudinal Session History & Insights
-│   │   └── profile.tsx         # User Profile & Privacy Configurations
-│   ├── call/                   # Direct Call Session Modal
-│   ├── settings/               # System and Voice Parameters
-│   └── _layout.tsx             # Root layout with theme and authentication guards
+│   │   └── profile.tsx         # Account preferences and safety settings
+│   ├── call/                   # Direct Call Session Modals
+│   ├── settings/               # App configuration surfaces
+│   └── _layout.tsx             # Root layout with theme, auth guards, and providers
 ├── assets/                     # Application visual assets, icons, and illustrations
-├── components/                 # Reusable UI component library
-│   ├── chat/                   # Conversation bubbles and composer inputs
-│   ├── havenly/                # Emotional evaluation components
+├── components/                 # Modular design system component library
+│   ├── chat/                   # Chat bubbles, composers, typing indicators
+│   ├── havenly/                # HavenlyOrb visual biofeedback mascot
 │   ├── live/                   # Real-time room indicators and call controls
 │   ├── safety/                 # Crisis intervention dialogs and hotline directories
-│   ├── ui/                     # Design system atoms (Buttons, Modals, Cards, Waveforms)
+│   ├── ui/                     # Design system primitives (Buttons, Cards, Modals)
 │   └── voice/                  # Voice recorder and animated visualizer widgets
-├── constants/                  # Configuration defaults, themes, and design tokens
-├── services/                   # Application service layer
-│   ├── ai/                     # Gemini Live WebSocket, REST fallback, safety prompts
-│   ├── audio/                  # Recording, playback, and permissions services
-│   ├── auth/                   # Supabase authentication implementation
-│   ├── chat/                   # Message routing and history synchronization
-│   └── supabaseClient.ts       # Supabase initialization client
+├── constants/                  # Configuration values, color palettes, and themes
+├── services/                   # Business logic and external service integrations
+│   ├── ai/                     # Gemini Live, Gemini REST, Prompts, and Safety
+│   │   ├── geminiLiveService.ts# WebSocket streaming service for full-duplex calls
+│   │   ├── geminiService.ts    # REST fallback and chat generation service
+│   │   ├── memoryService.ts    # Long-term memory extraction and check-ins
+│   │   ├── prompts.ts          # Master system prompts and boundary locks
+│   │   └── safetyService.ts    # Heuristic crisis detection and triaging
+│   ├── audio/                  # Audio recording, playback, and permissions
+│   ├── auth/                   # Supabase authentication integration
+│   ├── chat/                   # Conversation dispatch and message lifecycle
+│   ├── livekit/                # LiveKit WebRTC token and connection handling
+│   └── supabaseClient.ts       # Initialized Supabase client instance
 ├── store/                      # Zustand state definitions and store hooks
-├── types/                      # TypeScript schemas, models, and interface definitions
-├── utils/                      # Storage drivers, cryptographic utilities, and formatters
-├── app.json                    # Expo application manifest
-├── babel.config.js             # Babel compilation configuration
-├── metro.config.js             # Metro asset bundler configuration
-├── package.json                # Project dependency manifest and scripts
+├── types/                      # Comprehensive TypeScript type schemas
+├── utils/                      # Storage drivers, formatters, and utilities
+├── app.json                    # Expo manifest configuration
+├── babel.config.js             # Babel plugins configuration
+├── metro.config.js             # Metro bundler configuration
+├── package.json                # Project dependencies and script declarations
 └── tsconfig.json               # TypeScript compiler options
 ```
 
 ---
 
-## Setup and Installation
+## Installation and Local Deployment
 
 ### Prerequisites
 
 - **Node.js**: Version 18.x or 20.x LTS
 - **Package Manager**: npm or yarn
-- **Expo CLI**: Installed globally or executed via npx
-- **Mobile Environment**: Physical device with Expo Go, an iOS Simulator (macOS), or an Android Emulator
-- **API Access**: Google AI Studio API key with access to Gemini 1.5 / 2.0 Flash models
+- **Expo CLI**: Executed via `npx expo`
+- **Mobile Hardware**: Physical iOS or Android device running the **Expo Go** application, or an active simulator/emulator
+- **API Keys**: Active Google AI Studio API key with access to Gemini 1.5 / 2.0 Flash
 
-### Environment Configuration
+### Environment Setup
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/SrishantKumar/HavenlyAI.git
    cd HavenlyAI
    ```
 
-2. Duplicate the sample environment file:
+2. **Configure environment variables**:
    ```bash
    cp .env.example .env
    ```
 
-3. Update `.env` with your deployment credentials:
-   ```env
-   EXPO_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
-   EXPO_PUBLIC_DEMO_MODE=false
-   EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+3. **Install dependencies**:
+   ```bash
+   npm install
    ```
 
 ### Execution Commands
 
-Install project dependencies:
-
 ```bash
-npm install
-```
-
-Launch the development server:
-
-```bash
-# Start Metro bundler
+# Start the Metro development server
 npm run start
 
-# Launch on iOS Simulator
+# Launch directly on iOS Simulator
 npm run ios
 
-# Launch on Android Emulator
+# Launch directly on Android Emulator
 npm run android
 
 # Launch in Web Browser
@@ -313,31 +579,31 @@ npm run web
 
 ## Configuration Parameters
 
-| Parameter | Required | Default | Description |
+| Parameter | Type | Required | Description |
 | :--- | :---: | :---: | :--- |
-| `EXPO_PUBLIC_GEMINI_API_KEY` | Yes | None | Primary Google AI Studio key utilized for Multimodal Live WebSocket and REST inference. |
-| `EXPO_PUBLIC_DEMO_MODE` | No | `false` | When enabled (`true`), simulates conversational exchanges locally without incurring API consumption. |
-| `EXPO_PUBLIC_SUPABASE_URL` | No | None | Host URL for the target Supabase backend instance. |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | No | None | Anonymous public client key for Supabase database and authentication interactions. |
-| `EXPO_PUBLIC_API_URL` | No | None | Optional reverse proxy gateway for enterprise API routing. |
+| `EXPO_PUBLIC_GEMINI_API_KEY` | String | **Yes** | API key used for Google Gemini Multimodal Live WebSocket and REST inference. |
+| `EXPO_PUBLIC_DEMO_MODE` | Boolean | No | When set to `true`, uses local simulation mocks without consuming API credits. Default: `false`. |
+| `EXPO_PUBLIC_SUPABASE_URL` | String | No | Target Supabase project endpoint for cloud persistence. |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | String | No | Anonymous public API key for Supabase client authorization. |
+| `EXPO_PUBLIC_API_URL` | String | No | Custom proxy gateway URL for enterprise routing. |
 
 ---
 
-## Safety, Ethical Standards, and Clinical Disclaimer
+## Clinical, Ethical, and Safety Standards
 
-> **IMPORTANT CLINICAL NOTICE**  
-> HavenlyAI is not a medical device, licensed mental health provider, or psychiatric diagnostic service. It is not designed, intended, or certified to diagnose, prevent, or treat any medical or mental health condition.
+> **CLINICAL AND LEGAL NOTICE**  
+> HavenlyAI is not a licensed healthcare provider, diagnostic instrument, or clinical psychotherapy service. It is neither certified nor intended to diagnose, treat, prevent, or cure any psychiatric, psychological, or medical condition.
 
-- **Non-Clinical Boundary**: HavenlyAI explicitly does not provide clinical diagnoses, psychotherapy, or pharmacological guidance.
-- **Deterministic Crisis Protocol**: In the event of detected self-harm intent, suicidal ideation, or interpersonal violence, the platform halts standard dialogue and surfaces emergency support channels:
-  - **North America**: Call or text `988` (Suicide & Crisis Lifeline) or `911`.
-  - **India**: Call `9152987821` (iCall) or `112`.
+- **Non-Diagnostic Constraint**: HavenlyAI strictly refrains from providing psychiatric assessments, clinical diagnoses, or medical treatment plans.
+- **Immediate Crisis Redirection**: If a user indicates intent or thoughts of self-harm, suicide, or physical harm to themselves or others, the platform activates immediate safety interventions directing users to accredited crisis lifelines:
+  - **United States & Canada**: Call or text `988` (Suicide & Crisis Lifeline) or `911`.
+  - **India**: Call `9152987821` (iCall) or `112` (National Emergency).
   - **United Kingdom**: Call `111` or `999`.
-  - **International**: Immediate referral to [Befrienders Worldwide](https://www.befrienders.org/) and local emergency dispatchers.
-- **Data Confidentiality**: User logs, reflection history, and audio streams are never distributed to unverified third parties or utilized for public model retraining.
+  - **International**: Immediate referral to [Befrienders Worldwide](https://www.befrienders.org/) and local emergency dispatch services.
+- **Data Sovereignty**: Conversational exchanges are protected under strict tenancy controls and are never sold, commercialized, or utilized for unconsented public model retraining.
 
 ---
 
-## License and Compliance
+## License
 
-This project is licensed under the terms of the **MIT License**. Refer to the [`LICENSE`](./LICENSE) file for the complete text.
+This software is released under the **MIT License**. For full terms, refer to the [`LICENSE`](./LICENSE) file located in the root of this repository.
