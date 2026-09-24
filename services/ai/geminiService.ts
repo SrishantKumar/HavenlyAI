@@ -269,8 +269,8 @@ export const geminiService = {
 
         if (base64Data) {
           const promptInstruction = cleanTranscript
-            ? `The user shared this voice reflection with spoken words: "${cleanTranscript}". Please listen to the tone, emotion, and pace in their audio, and provide a warm, empathetic, spoken voice response. Keep it conversational, comforting, and direct.`
-            : `Please listen carefully to the user's voice reflection. Note the tone, emotion, and content of what they shared, and provide an empathetic, warm, conversational response directly to them.`;
+            ? `The user shared this voice reflection with spoken words: "${cleanTranscript}". Please listen to the tone, emotion, and pace in their audio, and provide a warm, empathetic, spoken voice response. Keep it conversational, comforting, and direct. Do not include any emojis (such as 💜) because text-to-speech engines pronounce them out loud.`
+            : `Please listen carefully to the user's voice reflection. Note the tone, emotion, and content of what they shared, and provide an empathetic, warm, conversational response directly to them. Do not include any emojis (such as 💜) because text-to-speech engines pronounce them out loud.`;
 
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
           const response = await fetch(url, {
@@ -325,7 +325,7 @@ export const geminiService = {
           const orReply = await openRouterService.generateCompletion(
             contextualPrompt,
             [],
-            `[User voice reflection]: "${cleanTranscript}". Please respond with warmth, compassion, and active listening.`
+            `[User voice reflection]: "${cleanTranscript}". Please respond with warmth, compassion, and active listening. Do not include any emojis because text-to-speech engines pronounce them out loud.`
           );
           if (orReply && orReply.trim()) {
             const cleaned = cleanModelResponse(orReply.trim());
@@ -348,7 +348,7 @@ export const geminiService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: `The user spoke this reflection: "${cleanTranscript}". Please respond warmly and supportively.` }] }],
+              contents: [{ parts: [{ text: `The user spoke this reflection: "${cleanTranscript}". Please respond warmly and supportively without using any emojis.` }] }],
               systemInstruction: { parts: [{ text: contextualPrompt }] },
             }),
           });

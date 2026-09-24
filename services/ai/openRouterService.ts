@@ -112,6 +112,12 @@ export function cleanModelResponse(rawText: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 
+  // 5. Strip emojis so speech engines pronounce pure words and never say "purple heart" or emoji names
+  cleaned = cleaned
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   if (isMetaThought(cleaned)) {
     return '';
   }

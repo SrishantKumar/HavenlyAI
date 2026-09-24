@@ -33,7 +33,9 @@ export const playbackService = {
 
       // Handle custom speech synthesis URI fallback for serverless web or native mobile environments
       if (uri.startsWith('speech://')) {
-        const text = decodeURIComponent(uri.substring(9));
+        const rawText = decodeURIComponent(uri.substring(9));
+        // Strip all emojis so speech engines never pronounce emoji names like "purple heart"
+        const text = rawText.replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim();
         
         // Mobile fallback using expo-speech
         if (Platform.OS !== 'web') {
