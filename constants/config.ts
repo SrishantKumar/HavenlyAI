@@ -1,5 +1,5 @@
 export const AI_CONFIG = {
-  textModel: 'gemini-3.5-flash-lite',      // High-limit (500 RPD) for text fallback
+  textModel: 'gemini-flash-latest',      // Fast, multimodal audio & text model (Gemini 3.8 Flash)
   liveModel: 'gemini-3.1-flash-live-preview', // Live API model — "Gemini 3 Flash Live" in quota dashboard
   ttsModel: 'gemini-2.5-flash-preview-tts',   // Studio-quality neural human voices (Kore, Puck, Charon, Fenrir)
 };

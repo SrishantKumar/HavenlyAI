@@ -4,7 +4,7 @@ import { CONFIG } from '../../constants/config';
 
 export interface AIProvider {
   sendTextMessage(text: string, conversationId: string, history: Message[]): Promise<AIResponse>;
-  analyzeAudio(audioUri: string, conversationId: string): Promise<AIResponse>;
+  analyzeAudio(audioUri: string, conversationId: string, userTranscript?: string): Promise<AIResponse>;
   generateVoiceResponse(text: string): Promise<AIResponse>;
 }
 
@@ -21,8 +21,8 @@ class UnifiedAIService implements AIProvider {
     return this.activeProvider.sendTextMessage(text, conversationId, history);
   }
 
-  async analyzeAudio(audioUri: string, conversationId: string): Promise<AIResponse> {
-    return this.activeProvider.analyzeAudio(audioUri, conversationId);
+  async analyzeAudio(audioUri: string, conversationId: string, userTranscript?: string): Promise<AIResponse> {
+    return this.activeProvider.analyzeAudio(audioUri, conversationId, userTranscript);
   }
 
   async generateVoiceResponse(text: string): Promise<AIResponse> {

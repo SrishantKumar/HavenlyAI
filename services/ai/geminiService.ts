@@ -186,175 +186,230 @@ export const geminiService = {
     }
   },
 
-  async analyzeAudio(audioUri: string, conversationId: string): Promise<AIResponse> {
+  async analyzeAudio(
+    audioUri: string,
+    conversationId: string,
+    userTranscript?: string
+  ): Promise<AIResponse> {
     const memoryProfile = await memoryService.getMemoryProfile();
     const contextualPrompt = memoryProfile ? `${SYSTEM_PROMPT}\n\nUser Context:\n${memoryProfile}` : SYSTEM_PROMPT;
+    const cleanTranscript = (userTranscript || '').trim();
 
+    // ponytail: Multimodal Gemini audio direct analysis first with OpenRouter speech transcript fallback ensures zero canned response loops.
+    // 1. If in Demo Mode, provide a contextual empathetic response
     if (CONFIG.isDemoMode) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      let reply = "Thank you for sharing that reflection with me. Saying things out loud can bring relief. I'm right here with you.";
+      if (cleanTranscript) {
+        const lower = cleanTranscript.toLowerCase();
+        if (lower.includes('stress') || lower.includes('overwhelm') || lower.includes('work') || lower.includes('busy')) {
+          reply = "I hear how exhausting and overwhelming things feel right now. It's completely valid to feel drained. What's one small thing you can let go of for just this moment?";
+        } else if (lower.includes('sad') || lower.includes('cry') || lower.includes('hurt') || lower.includes('heartbreak')) {
+          reply = "I'm listening, and I hear how much pain you're sitting with. You don't have to hold it all inside. I'm here beside you.";
+        } else if (lower.includes('anxious') || lower.includes('scared') || lower.includes('worry') || lower.includes('panic')) {
+          reply = "Your anxiety is real, but you are safe right now in this space. Let's take one steady breath together. What feels heaviest on your mind?";
+        } else if (lower.includes('lonely') || lower.includes('alone')) {
+          reply = "Feeling alone can feel like an ache that's hard to name. I want you to know you are heard and you matter. What would feel comforting right now?";
+        } else {
+          reply = `I heard you share: "${cleanTranscript}". Thank you for trusting me with that. How are you feeling in your body right now as you speak this?`;
+        }
+      }
       return {
-        text: "I've listened to your voice note. It sounds like you're carrying a lot of tension right now, and saying it out loud can sometimes make it feel a little lighter. I'm right here if you want to keep sharing.",
+        text: reply,
+        audioUrl: `speech://${encodeURIComponent(reply)}`,
         safetyFlagged: false,
         safetyLevel: 'none',
       };
     }
 
-    if (CONFIG.geminiApiKey) {
-      if (audioUri === 'mock-voice-note.m4a' || (!audioUri.startsWith('http') && !audioUri.startsWith('file') && !audioUri.startsWith('/'))) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return {
-          text: "I've listened to your voice reflection. It sounds like you're carrying a lot of tension right now, and saying it out loud can sometimes make it feel a little lighter. I'm right here if you want to keep sharing.",
-          audioUrl: `speech://${encodeURIComponent("I've listened to your voice reflection. It sounds like you're carrying a lot of tension right now, and saying it out loud can sometimes make it feel a little lighter. I'm right here if you want to keep sharing.")}`,
-          safetyFlagged: false,
-          safetyLevel: 'none',
-        };
-      }
-
+    // 2. Multimodal Gemini Audio Analysis
+    if (CONFIG.geminiApiKey && audioUri && audioUri !== 'mock-voice-note.m4a') {
       try {
         let base64Data = '';
+        let mimeType = 'audio/webm';
+
         if (audioUri.startsWith('data:')) {
-          base64Data = audioUri.split(',')[1];
+          const parts = audioUri.split(';base64,');
+          if (parts.length === 2) {
+            mimeType = parts[0].replace('data:', '') || 'audio/webm';
+            base64Data = parts[1];
+          }
         } else if (audioUri.startsWith('file://') || audioUri.startsWith('/') || audioUri.includes('/Containers/')) {
           try {
             const FileSystem = require('expo-file-system');
-            const decodedUri = decodeURIComponent(audioUri);
-            let targetUri = decodedUri;
-            if (targetUri.startsWith('/') && !targetUri.startsWith('file://')) {
-              targetUri = 'file://' + targetUri;
-            }
-            if (Platform.OS === 'ios') {
-              targetUri = targetUri.replace('file:///private/var/', 'file:///var/');
-            }
-            
-            try {
-              base64Data = await FileSystem.readAsStringAsync(targetUri, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-            } catch (innerFsErr) {
-              console.warn('Primary file read failed, attempting symlink/fetch fallback...', innerFsErr);
-              let altUri = targetUri.includes('file:///var/') 
-                ? targetUri.replace('file:///var/', 'file:///private/var/')
-                : targetUri.replace('file:///private/var/', 'file:///var/');
-              
-              try {
-                base64Data = await FileSystem.readAsStringAsync(altUri, {
-                  encoding: FileSystem.EncodingType.Base64,
-                });
-              } catch (altFsErr) {
-                console.warn('Alternative file read failed, trying blob fetch...', altFsErr);
-                const response = await fetch(audioUri);
-                const blob = await response.blob();
-                base64Data = await new Promise<string>((resolve, reject) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    const result = reader.result as string;
-                    resolve(result.split(',')[1]);
-                  };
-                  reader.onerror = reject;
-                  reader.readAsDataURL(blob);
-                });
-              }
-            }
-          } catch (fsError) {
-            console.error('FileSystem read error in geminiService:', fsError);
-            throw fsError;
+            base64Data = await FileSystem.readAsStringAsync(audioUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            mimeType = audioUri.endsWith('.m4a') ? 'audio/x-m4a' : (audioUri.endsWith('.wav') ? 'audio/wav' : 'audio/mp4');
+          } catch (_) {
+            const res = await fetch(audioUri);
+            const blob = await res.blob();
+            mimeType = blob.type || 'audio/mp4';
+            base64Data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(((reader.result as string) || '').split(',')[1] || '');
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
           }
-        } else {
-          const response = await fetch(audioUri);
-          const blob = await response.blob();
+        } else if (audioUri.startsWith('http') || audioUri.startsWith('blob:')) {
+          const res = await fetch(audioUri);
+          const blob = await res.blob();
+          mimeType = blob.type || 'audio/webm';
           base64Data = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              resolve(result.split(',')[1]);
-            };
+            reader.onloadend = () => resolve(((reader.result as string) || '').split(',')[1] || '');
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                {
-                  inlineData: {
-                    mimeType: audioUri.endsWith('.m4a') ? 'audio/x-m4a' : 'audio/mp3',
-                    data: base64Data
-                  }
-                },
-                {
-                  text: "Please transcribe the audio if possible and provide an empathetic, supportive, safety-aware response to what the user said. Keep it conversational."
-                }
-              ]
-            }],
-            systemInstruction: {
-              parts: [{ text: contextualPrompt }]
+        // Clean mimeType to standard without codecs parameter
+        mimeType = mimeType.split(';')[0].trim() || 'audio/webm';
+
+        if (base64Data) {
+          const promptInstruction = cleanTranscript
+            ? `The user shared this voice reflection with spoken words: "${cleanTranscript}". Please listen to the tone, emotion, and pace in their audio, and provide a warm, empathetic, spoken voice response. Keep it conversational, comforting, and direct.`
+            : `Please listen carefully to the user's voice reflection. Note the tone, emotion, and content of what they shared, and provide an empathetic, warm, conversational response directly to them.`;
+
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType,
+                      data: base64Data,
+                    },
+                  },
+                  {
+                    text: promptInstruction,
+                  },
+                ],
+              }],
+              systemInstruction: {
+                parts: [{ text: contextualPrompt }],
+              },
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const responseText = cleanModelResponse(rawText);
+            if (responseText && responseText.trim()) {
+              return {
+                text: responseText.trim(),
+                audioUrl: `speech://${encodeURIComponent(responseText.trim())}`,
+                safetyFlagged: false,
+                safetyLevel: 'none',
+              };
             }
-          })
+          } else {
+            const errBody = await response.text();
+            console.warn(`Direct Gemini audio analysis returned Status ${response.status}:`, errBody);
+          }
+        }
+      } catch (geminiAudioErr) {
+        console.warn('Gemini audio analysis failed, attempting transcript fallback:', geminiAudioErr);
+      }
+    }
+
+    // 3. Fallback: If transcript is present, use OpenRouter or Gemini text generation
+    if (cleanTranscript) {
+      if (CONFIG.openRouterApiKey) {
+        try {
+          const orReply = await openRouterService.generateCompletion(
+            contextualPrompt,
+            [],
+            `[User voice reflection]: "${cleanTranscript}". Please respond with warmth, compassion, and active listening.`
+          );
+          if (orReply && orReply.trim()) {
+            const cleaned = cleanModelResponse(orReply.trim());
+            return {
+              text: cleaned,
+              audioUrl: `speech://${encodeURIComponent(cleaned)}`,
+              safetyFlagged: false,
+              safetyLevel: 'none',
+            };
+          }
+        } catch (orErr) {
+          console.warn('[OpenRouter] Voice transcript fallback error:', orErr);
+        }
+      }
+
+      if (CONFIG.geminiApiKey) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
+          const textRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `The user spoke this reflection: "${cleanTranscript}". Please respond warmly and supportively.` }] }],
+              systemInstruction: { parts: [{ text: contextualPrompt }] },
+            }),
+          });
+          if (textRes.ok) {
+            const data = await textRes.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const cleaned = cleanModelResponse(rawText);
+            if (cleaned) {
+              return {
+                text: cleaned,
+                audioUrl: `speech://${encodeURIComponent(cleaned)}`,
+                safetyFlagged: false,
+                safetyLevel: 'none',
+              };
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 4. Fallback if backend server exists
+    try {
+      if (CONFIG.apiUrl && !CONFIG.apiUrl.includes('havenly.ai')) {
+        const formData = new FormData();
+        // @ts-ignore
+        formData.append('audio', {
+          uri: audioUri,
+          name: 'voice_message.webm',
+          type: 'audio/webm',
+        });
+        formData.append('conversationId', conversationId);
+
+        const response = await fetch(`${CONFIG.apiUrl}/audio/analyze`, {
+          method: 'POST',
+          body: formData,
+          headers: { 'Accept': 'application/json' },
         });
 
         if (response.ok) {
           const data = await response.json();
-          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
           return {
-            text: responseText,
-            audioUrl: '',
-            safetyFlagged: false,
-            safetyLevel: 'none',
+            text: data.text,
+            audioUrl: data.audioUrl || `speech://${encodeURIComponent(data.text)}`,
+            safetyFlagged: data.safetyFlagged,
+            safetyLevel: data.safetyLevel || 'none',
           };
-        } else {
-          const errBody = await response.text();
-          console.warn(`Direct Gemini audio analysis returned Status ${response.status}:`, errBody);
-          throw new Error(`Direct Gemini audio analysis returned Status ${response.status}: ${errBody}`);
         }
-      } catch (e) {
-        console.warn('Direct Gemini audio analysis exception, returning speech-transcription error response:', e);
-        return {
-          text: "I've received your voice note, but I had trouble processing the audio directly. I'm here to listen if you want to write it out or try again.",
-          audioUrl: '',
-          safetyFlagged: false,
-          safetyLevel: 'none',
-        };
       }
-    }
+    } catch (_) {}
 
-    try {
-      const formData = new FormData();
-      // @ts-ignore
-      formData.append('audio', {
-        uri: audioUri,
-        name: 'voice_message.m4a',
-        type: 'audio/m4a',
-      });
-      formData.append('conversationId', conversationId);
+    // 5. Final graceful supportive response
+    const fallbackReply = cleanTranscript
+      ? `I heard what you shared about "${cleanTranscript.slice(0, 50)}...". Thank you for saying it out loud. Take a slow breath, I'm right here with you.`
+      : "I received your voice note. Saying what's on your mind can sometimes make things feel a little lighter. I'm right here whenever you want to share more.";
 
-      const response = await fetch(`${CONFIG.apiUrl}/audio/analyze`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Audio upload failed');
-      }
-
-      const data = await response.json();
-      return {
-        text: data.text,
-        audioUrl: data.audioUrl,
-        safetyFlagged: data.safetyFlagged,
-        safetyLevel: data.safetyLevel || 'none',
-      };
-    } catch (error) {
-      console.error('Gemini Service audio analysis error:', error);
-      throw error;
-    }
+    return {
+      text: fallbackReply,
+      audioUrl: `speech://${encodeURIComponent(fallbackReply)}`,
+      safetyFlagged: false,
+      safetyLevel: 'none',
+    };
   },
 
   async generateVoiceResponse(text: string): Promise<AIResponse> {

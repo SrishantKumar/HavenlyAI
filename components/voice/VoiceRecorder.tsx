@@ -13,7 +13,7 @@ const IconTrash2 = Trash2 as any;
 const IconSend = Send as any;
 
 interface VoiceRecorderProps {
-  onRecordingComplete: (uri: string, durationSec: number) => void;
+  onRecordingComplete: (uri: string, durationSec: number, transcript?: string) => void;
   onCancel: () => void;
 }
 
@@ -98,12 +98,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const handleStopAndSend = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     try {
-      const { uri, durationMs } = await audioService.stopRecording();
+      const { uri, durationMs, transcript } = await audioService.stopRecording();
       setIsRecording(false);
       setIsPaused(false);
       
       if (uri) {
-        onRecordingComplete(uri, Math.floor(durationMs / 1000));
+        onRecordingComplete(uri, Math.max(1, Math.floor(durationMs / 1000)), transcript);
       }
     } catch (e) {
       console.warn(e);

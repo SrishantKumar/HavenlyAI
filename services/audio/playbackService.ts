@@ -233,6 +233,43 @@ export const playbackService = {
         }, 200);
 
         player.play();
+      } else if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+        const audio = new Audio(uri);
+        playerInstance = audio;
+        audio.onloadedmetadata = () => {
+          if (onPlaybackStatusUpdateCallback) {
+            onPlaybackStatusUpdateCallback({
+              isLoaded: true,
+              isPlaying: true,
+              positionMillis: 0,
+              durationMillis: (audio.duration || 0) * 1000,
+              didJustFinish: false,
+            });
+          }
+        };
+        audio.ontimeupdate = () => {
+          if (onPlaybackStatusUpdateCallback) {
+            onPlaybackStatusUpdateCallback({
+              isLoaded: true,
+              isPlaying: !audio.paused,
+              positionMillis: (audio.currentTime || 0) * 1000,
+              durationMillis: (audio.duration || 0) * 1000,
+              didJustFinish: audio.ended,
+            });
+          }
+        };
+        audio.onended = () => {
+          if (onPlaybackStatusUpdateCallback) {
+            onPlaybackStatusUpdateCallback({
+              isLoaded: true,
+              isPlaying: false,
+              positionMillis: (audio.duration || 0) * 1000,
+              durationMillis: (audio.duration || 0) * 1000,
+              didJustFinish: true,
+            });
+          }
+        };
+        await audio.play();
       } else {
         console.warn('Playback not supported in this environment.');
       }
@@ -335,6 +372,8 @@ export const playbackService = {
     try {
       if (typeof playerInstance.seekTo === 'function') {
         await playerInstance.seekTo(positionMillis / 1000);
+      } else if (typeof playerInstance.currentTime !== 'undefined') {
+        playerInstance.currentTime = positionMillis / 1000;
       }
       console.log('Audio playback seeked to:', positionMillis);
     } catch (error) {

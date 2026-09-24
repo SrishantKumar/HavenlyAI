@@ -80,13 +80,13 @@ export default function ChatSessionScreen() {
   };
 
   // Handle Voice Note Submission
-  const handleSendVoice = async (uri: string, durationSec: number) => {
+  const handleSendVoice = async (uri: string, durationSec: number, transcript?: string) => {
     if (!conversationId) return;
 
     setAiTyping(true);
     try {
       // A. Upload and get AI text reply
-      await api.uploadAudio(uri, conversationId);
+      await api.uploadAudio(uri, conversationId, transcript);
       // B. Refresh messages list
       const history = await chatService.getMessages(conversationId);
       setMessages(history);

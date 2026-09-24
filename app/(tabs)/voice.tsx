@@ -18,22 +18,26 @@ export default function VoiceNoteScreen() {
   const [aiAudioUrl, setAiAudioUrl] = useState<string | null>(null);
   const [aiTextResponse, setAiTextResponse] = useState<string | null>(null);
 
-  const handleRecordingComplete = async (uri: string, durationSec: number) => {
+  const handleRecordingComplete = async (uri: string, durationSec: number, transcript?: string) => {
     setLoading(true);
-    setTranscription('');
+    setTranscription(transcript || '');
     setAiTextResponse(null);
     setAiAudioUrl(null);
     
     try {
-      // Simulate/Trigger Audio upload and transcription analysis
-      const messages = await api.uploadAudio(uri, 'e0c8d154-1b1d-4eb4-bc6c-17865bc44a80');
+      // Trigger Audio upload and transcription analysis
+      const messages = await api.uploadAudio(uri, 'e0c8d154-1b1d-4eb4-bc6c-17865bc44a80', transcript);
       
       const userMsg = messages[0];
       const assistantMsg = messages[1];
 
-      setTranscription("I've analyzed your voice reflection.");
+      if (transcript) {
+        setTranscription(transcript);
+      } else if (userMsg && userMsg.content && userMsg.content !== 'Voice message sent to HavenlyAI') {
+        setTranscription(userMsg.content);
+      }
       setAiTextResponse(assistantMsg.content);
-      // Mock or real audio url
+      // Playable audio URL
       setAiAudioUrl(assistantMsg.audioUrl || null);
     } catch (e) {
       console.warn('Failed to process voice reflection', e);
@@ -68,10 +72,20 @@ export default function VoiceNoteScreen() {
           <View style={styles.statusBox}>
             <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 8 }} />
             <Text style={[styles.statusText, { color: colors.textMuted }]}>
-              Understanding your message...
+              Listening to your reflection...
             </Text>
           </View>
         )}
+
+        {/* User Spoken Reflection */}
+        {transcription && transcription !== "We couldn't analyze the audio right now. Please try again." ? (
+          <View style={styles.transcriptContainer}>
+            <GlassCard style={styles.transcriptCard}>
+              <Text style={[styles.transcriptHeader, { color: colors.textMuted }]}>What You Shared</Text>
+              <Text style={[styles.transcriptBody, { color: colors.text }]}>"{transcription}"</Text>
+            </GlassCard>
+          </View>
+        ) : null}
 
         {aiTextResponse && (
           <View style={styles.responseContainer}>
@@ -81,7 +95,10 @@ export default function VoiceNoteScreen() {
               
               {aiAudioUrl && (
                 <View style={styles.playerWrapper}>
-                  <AudioPlayer audioUrl={aiAudioUrl} durationSec={10} />
+                  <AudioPlayer 
+                    audioUrl={aiAudioUrl} 
+                    durationSec={Math.max(4, Math.round((aiTextResponse?.length || 60) * 0.08))} 
+                  />
                 </View>
               )}
             </GlassCard>
@@ -149,6 +166,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginBottom: LAYOUT.spacing.md,
+  },
+  transcriptContainer: {
+    marginVertical: LAYOUT.spacing.sm,
+  },
+  transcriptCard: {
+    padding: LAYOUT.spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: '#818CF8',
+  },
+  transcriptHeader: {
+    ...TYPOGRAPHY.caption,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  transcriptBody: {
+    ...TYPOGRAPHY.body,
+    fontSize: 14,
+    fontStyle: 'italic',
+    lineHeight: 20,
   },
   playerWrapper: {
     marginTop: LAYOUT.spacing.sm,

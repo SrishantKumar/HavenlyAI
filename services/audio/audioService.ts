@@ -26,7 +26,7 @@ export const audioService = {
     return recordingService.resumeRecording();
   },
 
-  stopRecording(): Promise<{ uri: string | null; durationMs: number }> {
+  stopRecording(): Promise<{ uri: string | null; durationMs: number; transcript?: string }> {
     return recordingService.stopRecording();
   },
 

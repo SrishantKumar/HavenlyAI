@@ -26,15 +26,15 @@ export const api = {
   deleteConversation: chatService.deleteConversation.bind(chatService),
 
   // Audio Uploads
-  uploadAudio: async (uri: string, conversationId: string): Promise<Message[]> => {
-    const aiResponse = await aiService.analyzeAudio(uri, conversationId);
+  uploadAudio: async (uri: string, conversationId: string, userTranscript?: string): Promise<Message[]> => {
+    const aiResponse = await aiService.analyzeAudio(uri, conversationId, userTranscript);
     
     // Construct user voice message and AI reply
     const userVoiceMessage: Message = {
       id: generateUUID(),
       conversationId,
       role: 'user',
-      content: 'Voice message sent to HavenlyAI',
+      content: userTranscript && userTranscript.trim() ? userTranscript.trim() : 'Voice message sent to HavenlyAI',
       timestamp: new Date().toISOString(),
       messageType: 'voice',
       audioUrl: uri,

@@ -26,7 +26,7 @@ const IconPlay = Play as any;
 
 interface ChatComposerProps {
   onSendText: (text: string) => void;
-  onSendVoice: (uri: string, durationSec: number) => void;
+  onSendVoice: (uri: string, durationSec: number, transcript?: string) => void;
   isSending?: boolean;
 }
 
@@ -117,12 +117,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const handleSendVoice = async () => {
     try {
       if (timerRef.current) clearInterval(timerRef.current);
-      const { uri, durationMs } = await audioService.stopRecording();
+      const { uri, durationMs, transcript } = await audioService.stopRecording();
       setIsRecording(false);
       setIsPaused(false);
       
       if (uri) {
-        onSendVoice(uri, Math.floor(durationMs / 1000));
+        onSendVoice(uri, Math.max(1, Math.floor(durationMs / 1000)), transcript);
       }
       setDuration(0);
     } catch (e) {
