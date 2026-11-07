@@ -56,11 +56,13 @@ export const geminiLiveService = {
     this.callbacks.onStateChanged?.('connecting');
     await new Promise(resolve => setTimeout(resolve, 400));
     this.callbacks.onStateChanged?.('connected');
-    console.log('Gemini Live: Connection initialized.');
+    console.log('Gemini Live: Connection initialized with hardcoded Kore voice.');
 
-    // ponytail: Live API models only output AUDIO (not TEXT) — can't decode PCM on RN without
-    // native libs. STT+REST+TTS pipeline works reliably and produces real AI responses.
-    this.startSpeechRecognitionLoop();
+    if (CONFIG.geminiApiKey) {
+      this.connectLiveWebSocket();
+    } else {
+      this.startSpeechRecognitionLoop();
+    }
   },
 
   connectLiveWebSocket(): void {
@@ -74,25 +76,19 @@ export const geminiLiveService = {
     }
 
     liveWs.onopen = () => {
-      console.log('Gemini Live WS: Connected. Sending setup...');
-      const storeVoice = useAppStore.getState().settings.voice?.selectedLiveVoice;
-      const liveVoice = storeVoice && storeVoice !== 'Puck' ? storeVoice : 'Kore';
-
+      console.log('Gemini Live WS: Connected. Sending setup with hardcoded Kore voice...');
       liveWs!.send(JSON.stringify({
         setup: {
-          model: `models/${AI_CONFIG.liveModel}`,
+          model: 'models/gemini-2.0-flash-exp',
           generationConfig: {
-            responseModalities: ['TEXT'],
+            responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: liveVoice,
+                  voiceName: 'Kore',
                 },
               },
             },
-          },
-          voice: {
-            name: liveVoice,
           },
           systemInstruction: { parts: [{ text: REALTIME_VOICE_INSTRUCTIONS }] },
         },
@@ -111,9 +107,33 @@ export const geminiLiveService = {
         if (parts?.length) {
           const text = parts.filter((p: any) => p.text).map((p: any) => p.text as string).join('');
           if (text.trim()) {
-            console.log('Gemini Live WS: AI reply:', text);
+            console.log('Gemini Live WS: AI reply transcript:', text);
             activeConversationHistory.push({ role: 'model', parts: [{ text }] });
             this.callbacks.onTranscriptReceived?.(text, 'model');
+          }
+
+          // Handle real Kore PCM audio streamed from Gemini Live WebSocket
+          const audioPart = parts.find((p: any) => p.inlineData && p.inlineData.data);
+          if (audioPart) {
+            console.log('Gemini Live WS: Streaming native Kore audio from Gemini Live.');
+            isSpeakingResponse = true;
+            useAppStore.getState().setOrbState('speaking');
+            this.playPCM24kHzBase64(
+              audioPart.inlineData.data,
+              (chunk) => this.callbacks.onAudioReceived?.(chunk),
+              () => {
+                isSpeakingResponse = false;
+                useAppStore.getState().setOrbState('listening');
+                this.callbacks.onStateChanged?.('connected');
+                setTimeout(() => this.restartRecognition(), 300);
+              },
+              () => {
+                isSpeakingResponse = false;
+                useAppStore.getState().setOrbState('idle');
+                this.restartRecognition();
+              }
+            );
+          } else if (text.trim()) {
             this.speakTextResponse(text);
           }
         }
@@ -465,77 +485,89 @@ export const geminiLiveService = {
   },
 
   speakTextResponse(text: string): void {
-    const settings = useAppStore.getState().settings;
-    const storeVoice = settings.voice?.selectedLiveVoice;
-    const liveVoice = storeVoice && storeVoice !== 'Puck' ? storeVoice : 'Kore';
-    const selectedVoice = settings.voice?.selectedVoice;
-
-    // Phase 2 & 3: Primary path using Vercel Edge TTS (msedge-tts neural audio)
-    edgeTtsService
-      .generateAndDownloadSpeech(text)
-      .then(async (speechUri) => {
-        if (speechUri) {
+    // 1. Primary Engine: Real Google Gemini Kore studio neural voice
+    this.fetchGeminiSpeechAudio(text)
+      .then((pcmBase64) => {
+        if (pcmBase64) {
           isSpeakingResponse = true;
-          this.callbacks.onStateChanged?.('connected');
-          await playbackService.playHavenResponse(speechUri);
-          isSpeakingResponse = false;
+          useAppStore.getState().setOrbState('speaking');
+          const player = this.playPCM24kHzBase64(
+            pcmBase64,
+            (chunk) => this.callbacks.onAudioReceived?.(chunk),
+            () => {
+              isSpeakingResponse = false;
+              useAppStore.getState().setOrbState('listening');
+              this.callbacks.onStateChanged?.('connected');
+              setTimeout(() => this.restartRecognition(), 300);
+            },
+            () => {
+              isSpeakingResponse = false;
+              useAppStore.getState().setOrbState('idle');
+              this.restartRecognition();
+            }
+          );
+          if (player) {
+            useAppStore.getState().setAudioPlayerRef(player);
+          }
           return;
         }
-        throw new Error('Edge TTS speech generation returned null.');
+        throw new Error('Gemini Kore voice unavailable');
       })
-      .catch((err) => {
-        console.warn('[GeminiLive] Edge TTS unavailable or timed out, triggering fallback:', err);
-        // Phase 5: UI Fallback: set Orb state to 'error' momentarily before returning to 'idle'
-        useAppStore.getState().setOrbState('error');
-        setTimeout(() => {
-          useAppStore.getState().setOrbState('idle');
-        }, 1200);
+      .catch(() => {
+        // 2. Secondary Engine: Vercel Edge TTS with hardcoded AriaNeural
+        edgeTtsService
+          .generateAndDownloadSpeech(text)
+          .then(async (speechUri) => {
+            if (speechUri) {
+              isSpeakingResponse = true;
+              this.callbacks.onStateChanged?.('connected');
+              await playbackService.playHavenResponse(speechUri);
+              isSpeakingResponse = false;
+              return;
+            }
+            throw new Error('Edge TTS speech generation returned null.');
+          })
+          .catch((err) => {
+            console.warn('[GeminiLive] Falling back to native natural female voice:', err);
+            useAppStore.getState().setOrbState('error');
+            setTimeout(() => {
+              useAppStore.getState().setOrbState('idle');
+            }, 1000);
 
-        // Fallback to local human calibrated voice synthesis
-        if (Platform.OS === 'web') {
-          this.speakWithWebSpeech(text, liveVoice, selectedVoice);
-        } else {
-          this.speakWithNativeSpeech(text, liveVoice, selectedVoice);
-        }
+            if (Platform.OS === 'web') {
+              this.speakWithWebSpeech(text);
+            } else {
+              this.speakWithNativeSpeech(text);
+            }
+          });
       });
   },
 
-  speakWithNativeSpeech(text: string, liveVoice: string, selectedVoice?: string): void {
+  speakWithNativeSpeech(text: string): void {
     try {
       const Speech = require('expo-speech');
       const go = async () => {
         let voiceId: string | undefined;
-        if (selectedVoice && selectedVoice !== 'default') {
-          try {
-            const voices = await Speech.getAvailableVoicesAsync();
-            const match = voices.find((v: any) => v.name === selectedVoice || v.identifier === selectedVoice);
-            if (match) voiceId = match.identifier;
-          } catch (_) {}
-        }
-        
-        // Strictly fallback to premium female voice (Samantha / female_1 / etc.), never a robotic male default
-        if (!voiceId) {
-          try {
-            const voices = await Speech.getAvailableVoicesAsync();
-            const match = voices.find((v: any) => {
-              const n = (v.name || '').toLowerCase();
-              const id = (v.identifier || '').toLowerCase();
-              const l = (v.language || '').toLowerCase();
-              if (!l.startsWith('en')) return false;
-              return (
-                n.includes('samantha') ||
-                id.includes('samantha') ||
-                n.includes('female_1') ||
-                id.includes('female_1') ||
-                n.includes('ava') ||
-                n.includes('karen') ||
-                n.includes('zira') ||
-                n.includes('female')
-              );
-            });
-            if (match) voiceId = match.identifier;
-          } catch (_) {}
-        }
+        try {
+          const voices = await Speech.getAvailableVoicesAsync();
+          const match = voices.find((v: any) => {
+            const n = (v.name || '').toLowerCase();
+            const id = (v.identifier || '').toLowerCase();
+            const l = (v.language || '').toLowerCase();
+            if (!l.startsWith('en')) return false;
+            return (
+              n.includes('samantha') ||
+              id.includes('samantha') ||
+              n.includes('female_1') ||
+              id.includes('female_1') ||
+              n.includes('ava') ||
+              n.includes('karen') ||
+              n.includes('zira') ||
+              n.includes('female')
+            );
+          });
+          if (match) voiceId = match.identifier;
+        } catch (_) {}
 
         simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 120);
 
@@ -570,15 +602,15 @@ export const geminiLiveService = {
       };
       go();
     } catch (_) {
-      this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+      this.speakWithWebSpeech(text);
     }
   },
 
-  async fetchGeminiSpeechAudio(text: string, voiceName: string): Promise<string | null> {
+  async fetchGeminiSpeechAudio(text: string): Promise<string | null> {
     const apiKey = CONFIG.geminiApiKey;
     if (!apiKey) return null;
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.ttsModel}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -588,14 +620,14 @@ export const geminiLiveService = {
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
-                prebuiltVoiceConfig: { voiceName }
+                prebuiltVoiceConfig: { voiceName: 'Kore' }
               }
             }
           }
         })
       });
       if (!res.ok) {
-        console.warn(`[Gemini TTS API] Status ${res.status}, using natural browser voice fallback.`);
+        console.warn(`[Gemini TTS API] Status ${res.status}`);
         return null;
       }
       const data = await res.json();
@@ -673,7 +705,7 @@ export const geminiLiveService = {
     }
   },
 
-  speakWithWebSpeech(text: string, liveVoice: string, selectedVoice?: string): void {
+  speakWithWebSpeech(text: string): void {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       simulatedPlaybackInterval = setInterval(() => this.callbacks.onAudioReceived?.(new ArrayBuffer(512)), 100);
       setTimeout(() => {
@@ -692,48 +724,34 @@ export const geminiLiveService = {
     const utt = new SpeechSynthesisUtterance(text);
     activeUtterance = utt;
 
-    // Resolve user's chosen voice or natural human voice matching persona
     const allVoices = window.speechSynthesis.getVoices();
-    let chosenVoice: any = null;
-
-    if (selectedVoice && selectedVoice !== 'default') {
-      chosenVoice = allVoices.find(v => v.name === selectedVoice || (v as any).voiceURI === selectedVoice);
-    }
-
-    const isFemale = liveVoice === 'Kore';
     const englishVoices = allVoices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
-
-    if (!chosenVoice) {
-      if (isFemale) {
-        // Find best warm natural female voice (Samantha, Ava, Jenny, Google US English Female, etc.)
-        chosenVoice =
-          englishVoices.find(v => {
-            const n = v.name.toLowerCase();
-            return (n.includes('natural') || n.includes('enhanced') || n.includes('samantha') || n.includes('ava') || n.includes('jenny') || n.includes('victoria') || n.includes('zira') || n.includes('karen')) && !n.includes('compact');
-          }) ||
-          englishVoices.find(v => v.name.toLowerCase().includes('female')) ||
-          englishVoices.find(v => !v.name.toLowerCase().includes('compact')) ||
-          englishVoices[0];
-      } else {
-        // Find best calm natural male voice (Daniel, Guy, David, Google UK English Male, etc.)
-        chosenVoice =
-          englishVoices.find(v => {
-            const n = v.name.toLowerCase();
-            return (n.includes('natural') || n.includes('enhanced') || n.includes('daniel') || n.includes('guy') || n.includes('david') || n.includes('oliver') || n.includes('george')) && !n.includes('compact');
-          }) ||
-          englishVoices.find(v => v.name.toLowerCase().includes('male')) ||
-          englishVoices.find(v => !v.name.toLowerCase().includes('compact')) ||
-          englishVoices[0];
-      }
-    }
+    const chosenVoice =
+      englishVoices.find(v => {
+        const n = v.name.toLowerCase();
+        return (
+          (n.includes('natural') ||
+            n.includes('enhanced') ||
+            n.includes('samantha') ||
+            n.includes('ava') ||
+            n.includes('jenny') ||
+            n.includes('victoria') ||
+            n.includes('zira') ||
+            n.includes('karen') ||
+            n.includes('aria')) &&
+          !n.includes('compact')
+        );
+      }) ||
+      englishVoices.find(v => v.name.toLowerCase().includes('female')) ||
+      englishVoices[0];
 
     if (chosenVoice) {
       utt.voice = chosenVoice;
     }
 
     // Natural empathetic vocal pacing (calm, warm, unhurried)
-    utt.rate = 0.93;
-    utt.pitch = isFemale ? 0.98 : liveVoice === 'Charon' ? 0.92 : 0.96;
+    utt.rate = 0.95;
+    utt.pitch = 1.0;
 
     let finished = false;
     const estimatedMs = Math.max(2000, text.length * 75) + 3000;

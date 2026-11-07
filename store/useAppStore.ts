@@ -321,14 +321,10 @@ export const useAppStore = create<AppState>((set, get) => {
       if (savedSettingsStr) {
         try {
           parsedSettings = JSON.parse(savedSettingsStr);
-          // Migrate legacy Puck or non-female defaults to premium female Kore / Aria
+          // Strictly enforce premium female Kore / Aria across all stored profiles
           if (parsedSettings && typeof parsedSettings === 'object' && parsedSettings.voice) {
-            if (parsedSettings.voice.selectedLiveVoice === 'Puck' || !parsedSettings.voice.selectedLiveVoice) {
-              parsedSettings.voice.selectedLiveVoice = 'Kore';
-            }
-            if (parsedSettings.voice.selectedVoice === 'default' || !parsedSettings.voice.selectedVoice) {
-              parsedSettings.voice.selectedVoice = DEFAULT_PREMIUM_FEMALE_TTS;
-            }
+            parsedSettings.voice.selectedLiveVoice = 'Kore';
+            parsedSettings.voice.selectedVoice = DEFAULT_PREMIUM_FEMALE_TTS;
           }
         } catch (e) {
           console.warn('Failed to parse saved settings', e);

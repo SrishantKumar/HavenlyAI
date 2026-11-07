@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { CONFIG } from '../../constants/config';
-import { useAppStore } from '../../store/useAppStore';
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const HARDCODED_EDGE_VOICE = 'en-US-AriaNeural';
 
 /**
  * Pure TypeScript helper to convert an ArrayBuffer to a base64 string
@@ -44,14 +44,7 @@ export const edgeTtsService = {
       return null;
     }
 
-    const storeVoice = useAppStore.getState().settings.voice?.selectedVoice;
-    // Resolve female voice from store or default to AriaNeural
-    const activeVoice =
-      voice && voice !== 'default'
-        ? voice
-        : storeVoice && storeVoice.includes('Neural')
-        ? storeVoice
-        : 'en-US-AriaNeural';
+    const activeVoice = HARDCODED_EDGE_VOICE;
 
     // Strip emojis so TTS synthesis remains clinical and calming
     const cleanText = text

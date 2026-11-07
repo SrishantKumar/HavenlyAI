@@ -187,11 +187,6 @@ export default function ProfileScreen() {
       route: '/settings?section=appearance',
     },
     {
-      icon: <IconMic color={colors.primary} size={20} />,
-      label: 'Voice Preferences',
-      route: '/settings?section=voice',
-    },
-    {
       icon: <IconEye color={colors.primary} size={20} />,
       label: 'Privacy & Data Control',
       route: '/settings?section=privacy',

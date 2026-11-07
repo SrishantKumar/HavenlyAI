@@ -43,42 +43,31 @@ export const playbackService = {
             const Speech = require('expo-speech');
             console.log('Using native expo-speech for vocal output:', text);
             
-            const selectedVoiceName = useAppStore.getState().settings.voice.selectedVoice;
             let selectedVoiceId: string | undefined = undefined;
 
-            if (selectedVoiceName && selectedVoiceName !== 'default') {
+            // Strictly default to premium natural female voice (Samantha / female_1)
+            try {
               const list = await Speech.getAvailableVoicesAsync();
-              const match = list.find((v: any) => v.name === selectedVoiceName || v.identifier === selectedVoiceName);
+              const match = list.find((v: any) => {
+                const n = (v.name || '').toLowerCase();
+                const id = (v.identifier || '').toLowerCase();
+                const l = (v.language || '').toLowerCase();
+                if (!l.startsWith('en')) return false;
+                return (
+                  n.includes('samantha') ||
+                  id.includes('samantha') ||
+                  n.includes('female_1') ||
+                  id.includes('female_1') ||
+                  n.includes('ava') ||
+                  n.includes('karen') ||
+                  n.includes('zira') ||
+                  n.includes('female')
+                );
+              });
               if (match) {
                 selectedVoiceId = match.identifier;
               }
-            }
-
-            // Fallback strictly to premium natural female voice (Samantha, female_1, etc.)
-            if (!selectedVoiceId) {
-              try {
-                const list = await Speech.getAvailableVoicesAsync();
-                const match = list.find((v: any) => {
-                  const n = (v.name || '').toLowerCase();
-                  const id = (v.identifier || '').toLowerCase();
-                  const l = (v.language || '').toLowerCase();
-                  if (!l.startsWith('en')) return false;
-                  return (
-                    n.includes('samantha') ||
-                    id.includes('samantha') ||
-                    n.includes('female_1') ||
-                    id.includes('female_1') ||
-                    n.includes('ava') ||
-                    n.includes('karen') ||
-                    n.includes('zira') ||
-                    n.includes('female')
-                  );
-                });
-                if (match) {
-                  selectedVoiceId = match.identifier;
-                }
-              } catch (_) {}
-            }
+            } catch (_) {}
 
             if (onPlaybackStatusUpdateCallback) {
               onPlaybackStatusUpdateCallback({
@@ -146,36 +135,29 @@ export const playbackService = {
           utterance.rate = 0.95;
           utterance.volume = 1.0;
 
-          const selectedVoiceName = useAppStore.getState().settings.voice.selectedVoice;
           const voices = window.speechSynthesis.getVoices();
           let selectedVoice = null;
 
-          if (selectedVoiceName && selectedVoiceName !== 'default') {
-            selectedVoice = voices.find(v => v.name === selectedVoiceName) || null;
+          const maleNames = ['david', 'ravi', 'george', 'daniel', 'mark', 'richard', 'thomas', 'guy', 'stefan', 'james', 'alex'];
+          const preferredVoiceKeywords = [
+            'veena', 'heera', 'en-in', 'samantha', 'zira', 'susan', 'karen', 'hazel', 'google us english'
+          ];
+
+          const englishVoices = voices.filter(v => v.lang.toLowerCase().startsWith('en'));
+          const candidateVoices = englishVoices.filter(v => 
+            !maleNames.some(name => v.name.toLowerCase().includes(name))
+          );
+
+          for (const keyword of preferredVoiceKeywords) {
+            selectedVoice = candidateVoices.find(v => 
+              v.name.toLowerCase().includes(keyword) || 
+              v.lang.toLowerCase().replace('_', '-').includes(keyword)
+            ) || null;
+            if (selectedVoice) break;
           }
 
-          if (!selectedVoice) {
-            const maleNames = ['david', 'ravi', 'george', 'daniel', 'mark', 'richard', 'thomas', 'guy', 'stefan', 'james', 'alex'];
-            const preferredVoiceKeywords = [
-              'veena', 'heera', 'en-in', 'samantha', 'zira', 'susan', 'karen', 'hazel', 'google us english'
-            ];
-
-            const englishVoices = voices.filter(v => v.lang.toLowerCase().startsWith('en'));
-            const candidateVoices = englishVoices.filter(v => 
-              !maleNames.some(name => v.name.toLowerCase().includes(name))
-            );
-
-            for (const keyword of preferredVoiceKeywords) {
-              selectedVoice = candidateVoices.find(v => 
-                v.name.toLowerCase().includes(keyword) || 
-                v.lang.toLowerCase().replace('_', '-').includes(keyword)
-              ) || null;
-              if (selectedVoice) break;
-            }
-
-            if (!selectedVoice && candidateVoices.length > 0) {
-              selectedVoice = candidateVoices[0];
-            }
+          if (!selectedVoice && candidateVoices.length > 0) {
+            selectedVoice = candidateVoices[0];
           }
 
           if (selectedVoice) {

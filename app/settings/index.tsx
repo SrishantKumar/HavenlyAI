@@ -1,33 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Sun, Moon, Volume2, Shield, Info, AlertTriangle, Play, Square, Check, Volume1, Key } from 'lucide-react-native';
+import { Sun, Moon, Shield, Info, AlertTriangle, Key, Check } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
-import { useAppStore, DEFAULT_PREMIUM_FEMALE_TTS } from '../../store/useAppStore';
+import { useAppStore } from '../../store/useAppStore';
 import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { storage } from '../../utils/storage';
 
 const IconSun = Sun as any;
 const IconMoon = Moon as any;
-const IconVolume2 = Volume2 as any;
 const IconShield = Shield as any;
 const IconAlertTriangle = AlertTriangle as any;
 const IconInfo = Info as any;
-const IconPlay = Play as any;
-const IconSquare = Square as any;
-const IconCheck = Check as any;
-const IconVolume1 = Volume1 as any;
 const IconKey = Key as any;
+const IconCheck = Check as any;
 import Header from '../../components/ui/Header';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-
-const GEMINI_LIVE_VOICES = [
-  { id: 'Kore', name: 'Kore', description: 'Warm, compassionate female tone (Default)', gender: 'female' },
-  { id: 'Puck', name: 'Puck', description: 'Conversational, friendly male tone', gender: 'male' },
-  { id: 'Charon', name: 'Charon', description: 'Empathetic, calm deep male tone', gender: 'male' },
-  { id: 'Fenrir', name: 'Fenrir', description: 'Energetic, active male tone', gender: 'male' },
-];
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -36,8 +25,6 @@ export default function SettingsScreen() {
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
 
   const [clearDataModalVisible, setClearDataModalVisible] = useState(false);
-  const [voices, setVoices] = useState<any[]>([]);
-  const [isPlayingPreview, setIsPlayingPreview] = useState<string | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [apiKeyMessage, setApiKeyMessage] = useState('');
@@ -46,36 +33,6 @@ export default function SettingsScreen() {
   const [openRouterKeyStatus, setOpenRouterKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [openRouterKeyMessage, setOpenRouterKeyMessage] = useState('');
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
-
-  // Load available SpeechSynthesis voices
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      try {
-        const Speech = require('expo-speech');
-        Speech.getAvailableVoicesAsync().then((list: any[]) => {
-          const englishList = list.filter(v => v.language.toLowerCase().startsWith('en'));
-          const mappedVoices = englishList.map(v => ({
-            name: v.name,
-            lang: v.language,
-            identifier: v.identifier,
-          }));
-          setVoices(mappedVoices);
-        });
-      } catch (e) {
-        console.warn('Failed to load expo-speech native voices', e);
-      }
-    } else if (typeof window !== 'undefined' && window.speechSynthesis) {
-      const updateVoices = () => {
-        const list = window.speechSynthesis.getVoices();
-        const englishList = list.filter(v => v.lang.toLowerCase().startsWith('en'));
-        setVoices(englishList);
-      };
-      updateVoices();
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = updateVoices;
-      }
-    }
-  }, []);
 
   useEffect(() => {
     const key = CONFIG.geminiApiKey;
@@ -184,201 +141,9 @@ export default function SettingsScreen() {
     setTheme(mode);
   };
 
-  const handleToggleAutoplay = (val: boolean) => {
-    updateSettings({
-      voice: {
-        ...settings.voice,
-        autoplay: val,
-      },
-    });
-  };
 
-  const handleSelectVoice = (voiceName: string) => {
-    updateSettings({
-      voice: {
-        ...settings.voice,
-        selectedVoice: voiceName,
-      },
-    });
-  };
 
-  const handleSelectLiveVoice = (liveVoiceName: string) => {
-    updateSettings({
-      voice: {
-        ...settings.voice,
-        selectedLiveVoice: liveVoiceName,
-      },
-    });
-  };
 
-  const playVoicePreview = (voice: any) => {
-    if (Platform.OS !== 'web') {
-      try {
-        const Speech = require('expo-speech');
-        if (isPlayingPreview === voice.name) {
-          Speech.stop();
-          setIsPlayingPreview(null);
-          return;
-        }
-
-        Speech.stop();
-        setIsPlayingPreview(voice.name);
-        Speech.speak("Hello, this is a preview of my voice for your Havenly companion. How do I sound?", {
-          voice: voice.identifier,
-          onComplete: () => setIsPlayingPreview(null),
-          onError: () => setIsPlayingPreview(null),
-        });
-        return;
-      } catch (e) {
-        console.warn('Failed preview playback with expo-speech', e);
-      }
-    }
-
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    
-    if (isPlayingPreview === voice.name) {
-      window.speechSynthesis.cancel();
-      setIsPlayingPreview(null);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("Hello, this is a preview of my voice for your Havenly companion. How do I sound?");
-    utterance.voice = voice;
-    utterance.rate = 1.0;
-    utterance.pitch = voice.name.toLowerCase().includes('david') || voice.name.toLowerCase().includes('google uk english male') ? 1.0 : 1.1;
-
-    utterance.onstart = () => setIsPlayingPreview(voice.name);
-    utterance.onend = () => setIsPlayingPreview(null);
-    utterance.onerror = () => setIsPlayingPreview(null);
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const playLiveVoicePreview = async (voiceId: string, gender: string) => {
-    const previewKey = `live_${voiceId}`;
-    if (isPlayingPreview === previewKey) {
-      if (typeof window !== 'undefined' && (window as any).__havenlyPreviewSource) {
-        try { (window as any).__havenlyPreviewSource.stop(); } catch (_) {}
-        (window as any).__havenlyPreviewSource = null;
-      }
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      setIsPlayingPreview(null);
-      return;
-    }
-
-    if (Platform.OS !== 'web') {
-      try {
-        const Speech = require('expo-speech');
-        Speech.stop();
-        setIsPlayingPreview(previewKey);
-        Speech.speak(`Hello! I am ${voiceId}. I will be your companion for live voice sessions.`, {
-          rate: 0.93,
-          pitch: gender === 'female' ? 0.98 : 0.94,
-          onComplete: () => setIsPlayingPreview(null),
-          onError: () => setIsPlayingPreview(null),
-        });
-        return;
-      } catch (e) {
-        console.warn('Failed preview playback with expo-speech', e);
-      }
-    }
-
-    if (typeof window === 'undefined') return;
-
-    // 1. Try Gemini studio neural voice preview if API key is present
-    if (CONFIG.geminiApiKey) {
-      try {
-        setIsPlayingPreview(previewKey);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.ttsModel}:generateContent?key=${CONFIG.geminiApiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: `Hello! I am ${voiceId}. I will be your companion for live voice sessions.` }] }],
-            generationConfig: {
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: voiceId }
-                }
-              }
-            }
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const pcmBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-          if (pcmBase64) {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContextClass) {
-              const audioCtx = new AudioContextClass({ sampleRate: 24000 });
-              const binary = atob(pcmBase64);
-              const bytes = new Uint8Array(binary.length);
-              for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-              const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
-              const float32 = new Float32Array(int16.length);
-              for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
-
-              const buffer = audioCtx.createBuffer(1, float32.length, 24000);
-              buffer.getChannelData(0).set(float32);
-
-              const source = audioCtx.createBufferSource();
-              source.buffer = buffer;
-              source.connect(audioCtx.destination);
-              (window as any).__havenlyPreviewSource = source;
-
-              source.onended = () => {
-                try { audioCtx.close(); } catch (_) {}
-                setIsPlayingPreview(null);
-              };
-
-              source.start();
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Gemini audio preview error, falling back:', err);
-      }
-    }
-
-    // 2. High-fidelity natural browser speech synthesis fallback
-    if (!window.speechSynthesis) return;
-
-    window.speechSynthesis.cancel();
-    setIsPlayingPreview(previewKey);
-
-    const utterance = new SpeechSynthesisUtterance(`Hello! I am ${voiceId}. I will be your companion for live voice sessions.`);
-    const localVoices = window.speechSynthesis.getVoices();
-    const englishVoices = localVoices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
-
-    let localMatch = null;
-    if (gender === 'female') {
-      localMatch = englishVoices.find(v => {
-        const n = v.name.toLowerCase();
-        return (n.includes('natural') || n.includes('enhanced') || n.includes('samantha') || n.includes('ava') || n.includes('jenny') || n.includes('victoria') || n.includes('female')) && !n.includes('compact');
-      }) || englishVoices.find(v => v.name.toLowerCase().includes('female')) || englishVoices[0];
-    } else {
-      localMatch = englishVoices.find(v => {
-        const n = v.name.toLowerCase();
-        return (n.includes('natural') || n.includes('enhanced') || n.includes('daniel') || n.includes('guy') || n.includes('david') || n.includes('male')) && !n.includes('compact');
-      }) || englishVoices.find(v => v.name.toLowerCase().includes('male')) || englishVoices[0];
-    }
-
-    if (localMatch) utterance.voice = localMatch;
-    utterance.rate = 0.93;
-    utterance.pitch = gender === 'female' ? 0.98 : 0.94;
-
-    utterance.onend = () => setIsPlayingPreview(null);
-    utterance.onerror = () => setIsPlayingPreview(null);
-
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(utterance);
-  };
 
   const handleToggleHistory = (val: boolean) => {
     updateSettings({
@@ -397,7 +162,6 @@ export default function SettingsScreen() {
 
   const pageTitle = 
     section === 'appearance' ? 'General Preferences' :
-    section === 'voice' ? 'Voice Preferences' :
     section === 'privacy' ? 'Privacy & Data Control' :
     section === 'safety' ? 'Safety & Disclaimer' :
     'Settings';
@@ -456,137 +220,6 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
-
-        {/* Voice Preferences */}
-        {(!section || section === 'voice') && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.primary }]}>Voice Preferences</Text>
-            
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
-              <View style={styles.switchRow}>
-                <View style={styles.rowInfo}>
-                  <IconVolume2 color={colors.text} size={20} style={{ marginRight: 8 }} />
-                  <Text style={[styles.label, { color: colors.text }]}>Auto-play voice responses</Text>
-                </View>
-                <Switch
-                  value={settings.voice.autoplay}
-                  onValueChange={handleToggleAutoplay}
-                  trackColor={{ false: colors.border, true: colors.primaryLight }}
-                  thumbColor={settings.voice.autoplay ? colors.primary : '#F4F3F4'}
-                />
-              </View>
-            </View>
-
-            {/* In-app Voice Chat Synthesis Selection */}
-            <Text style={[styles.subSectionTitle, { color: colors.text }]}>Voice Chat Speaker (TTS)</Text>
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
-              {/* Default Premium Female Voice Option */}
-              <TouchableOpacity 
-                onPress={() => handleSelectVoice(DEFAULT_PREMIUM_FEMALE_TTS)}
-                style={[
-                  styles.voiceRow,
-                  (settings.voice.selectedVoice === 'default' || settings.voice.selectedVoice === DEFAULT_PREMIUM_FEMALE_TTS) && { backgroundColor: colors.secondary }
-                ]}
-              >
-                <View style={styles.voiceInfo}>
-                  <IconVolume1 color={colors.primary} size={18} style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={[styles.voiceName, { color: colors.text }]}>Premium Female Register (Default)</Text>
-                    <Text style={[styles.voiceMeta, { color: colors.textMuted }]}>
-                      {Platform.OS === 'ios' ? 'Samantha (iOS Natural)' : Platform.OS === 'android' ? 'Natural Female (Android)' : 'Aria Neural (Edge TTS)'}
-                    </Text>
-                  </View>
-                </View>
-                {(settings.voice.selectedVoice === 'default' || settings.voice.selectedVoice === DEFAULT_PREMIUM_FEMALE_TTS) && <IconCheck color={colors.primary} size={18} />}
-              </TouchableOpacity>
-
-              {/* Loaded Browser Voices */}
-              {voices.map((voice, idx) => {
-                const isSelected = settings.voice.selectedVoice === voice.name;
-                const isPlaying = isPlayingPreview === voice.name;
-                const voiceKey = voice.identifier || voice.voiceURI || `${voice.name}_${idx}`;
-
-                return (
-                  <View 
-                    key={voiceKey} 
-                    style={[
-                      styles.voiceRow, 
-                      isSelected && { backgroundColor: colors.secondary }
-                    ]}
-                  >
-                    <TouchableOpacity 
-                      onPress={() => handleSelectVoice(voice.name)}
-                      style={styles.voiceClickArea}
-                    >
-                      <IconVolume1 color={colors.primary} size={18} style={{ marginRight: 8 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.voiceName, { color: colors.text }]} numberOfLines={1}>
-                          {voice.name.replace('Microsoft', '').replace('Google', '').trim()}
-                        </Text>
-                        <Text style={[styles.voiceMeta, { color: colors.textMuted }]}>
-                          {voice.lang}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <View style={styles.voiceActions}>
-                      <TouchableOpacity 
-                        onPress={() => playVoicePreview(voice)}
-                        style={[styles.playButton, { backgroundColor: colors.primary }]}
-                        accessibilityLabel="Preview voice"
-                      >
-                        {isPlaying ? <IconSquare color="#FFFFFF" size={10} fill="#FFFFFF" /> : <IconPlay color="#FFFFFF" size={10} fill="#FFFFFF" />}
-                      </TouchableOpacity>
-                      {isSelected && <IconCheck color={colors.primary} size={18} style={{ marginLeft: 8 }} />}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Gemini Live Voice Selection */}
-            <Text style={[styles.subSectionTitle, { color: colors.text }]}>Live Call Voice (Gemini Live)</Text>
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {GEMINI_LIVE_VOICES.map((voice) => {
-                const currentLiveVoice = settings.voice.selectedLiveVoice || 'Kore';
-                const isSelected = currentLiveVoice === voice.id;
-                const isPlaying = isPlayingPreview === `live_${voice.id}`;
-
-                return (
-                  <View 
-                    key={voice.id} 
-                    style={[
-                      styles.voiceRow, 
-                      isSelected && { backgroundColor: colors.secondary }
-                    ]}
-                  >
-                    <TouchableOpacity 
-                      onPress={() => handleSelectLiveVoice(voice.id)}
-                      style={styles.voiceClickArea}
-                    >
-                      <IconVolume1 color={colors.primary} size={18} style={{ marginRight: 8 }} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.voiceName, { color: colors.text }]}>{voice.name}</Text>
-                        <Text style={[styles.voiceMeta, { color: colors.textMuted }]}>{voice.description}</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                  <View style={styles.voiceActions}>
-                    <TouchableOpacity 
-                      onPress={() => playLiveVoicePreview(voice.id, voice.gender)}
-                      style={[styles.playButton, { backgroundColor: colors.primary }]}
-                      accessibilityLabel="Preview voice"
-                    >
-                      {isPlaying ? <IconSquare color="#FFFFFF" size={10} fill="#FFFFFF" /> : <IconPlay color="#FFFFFF" size={10} fill="#FFFFFF" />}
-                    </TouchableOpacity>
-                    {isSelected && <IconCheck color={colors.primary} size={18} style={{ marginLeft: 8 }} />}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
 
         {/* AI Providers Settings */}
         {(!section || section === 'appearance') && (
@@ -860,47 +493,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  voiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: LAYOUT.spacing.sm,
-    paddingHorizontal: LAYOUT.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.03)',
-    borderRadius: LAYOUT.borderRadius.small,
-  },
-  voiceClickArea: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  voiceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  voiceName: {
-    ...TYPOGRAPHY.body,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  voiceMeta: {
-    ...TYPOGRAPHY.caption,
-    fontSize: 11,
-    marginTop: 1,
-  },
-  voiceActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  playButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   destructiveBtn: {
     marginTop: LAYOUT.spacing.md,
