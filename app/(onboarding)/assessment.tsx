@@ -8,10 +8,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Activity, Sparkles, ArrowRight } from 'lucide-react-native';
+import { Activity, Sparkles, ArrowRight, ChevronLeft } from 'lucide-react-native';
 const IconActivity = Activity as any;
 const IconSparkles = Sparkles as any;
 const IconArrowRight = ArrowRight as any;
+const IconChevronLeft = ChevronLeft as any;
 
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
@@ -39,7 +40,7 @@ const OPTIONS = [
 
 export default function AssessmentScreen() {
   const router = useRouter();
-  const { setPhq4Baseline, setOnboardingComplete } = useAppStore();
+  const { setPhq4Baseline, setOnboardingComplete, onboardingComplete, phq4Score } = useAppStore();
   const isDark = useAppStore((state) => state.theme === 'dark');
   const colors = isDark ? COLORS.dark : COLORS.light;
 
@@ -68,22 +69,43 @@ export default function AssessmentScreen() {
     } finally {
       setOnboardingComplete(true);
       setSubmitting(false);
-      router.replace('/(tabs)');
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   };
 
   const handleSkip = () => {
-    // Acute panic / distress safeguard: allow immediate entry without cognitive barrier
+    // Acute panic / distress safeguard: allow immediate entry or exit
     setOnboardingComplete(true);
-    router.replace('/(tabs)');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={[styles.iconBadge, { backgroundColor: colors.secondary }]}>
-            <IconActivity color={colors.primary} size={22} />
+          <View style={styles.headerTopLeft}>
+            {(router.canGoBack() || onboardingComplete) && (
+              <TouchableOpacity
+                onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}
+                style={[styles.backBtn, { borderColor: colors.border }]}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <IconChevronLeft color={colors.text} size={20} />
+              </TouchableOpacity>
+            )}
+            <View style={[styles.iconBadge, { backgroundColor: colors.secondary }]}>
+              <IconActivity color={colors.primary} size={22} />
+            </View>
           </View>
           <TouchableOpacity
             onPress={handleSkip}
@@ -92,7 +114,9 @@ export default function AssessmentScreen() {
             accessibilityRole="button"
             accessibilityLabel="Skip assessment for now"
           >
-            <Text style={[styles.skipBtnText, { color: colors.textMuted }]}>Skip for Now</Text>
+            <Text style={[styles.skipBtnText, { color: colors.textMuted }]}>
+              {onboardingComplete ? 'Cancel' : 'Skip for Now'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -172,7 +196,13 @@ export default function AssessmentScreen() {
 
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Button
-          title={submitting ? 'Saving...' : 'Complete & Enter Sanctuary'}
+          title={
+            submitting
+              ? 'Saving...'
+              : onboardingComplete
+              ? 'Save Baseline Changes'
+              : 'Complete & Enter Sanctuary'
+          }
           onPress={handleComplete}
           variant="primary"
           size="large"
@@ -180,7 +210,7 @@ export default function AssessmentScreen() {
         />
         <TouchableOpacity onPress={handleSkip} style={styles.textSkipLink} activeOpacity={0.6}>
           <Text style={[styles.textSkipLinkText, { color: colors.textMuted }]}>
-            In distress? Skip directly to Sanctuary
+            {onboardingComplete ? 'Cancel and return to Profile' : 'In distress? Skip directly to Sanctuary'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -202,6 +232,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: LAYOUT.spacing.sm,
+  },
+  headerTopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconBadge: {
     width: 44,

@@ -70,7 +70,9 @@ function InitialLayout() {
       }
     } else {
       // Authenticated and Onboarding Complete -> go to Home Tab
-      if (inAuthGroup || inOnboardingGroup || (segments.length as number) === 0) {
+      // Allow access to assessment when updating baseline from Profile
+      const isAssessmentScreen = (segments as string[]).includes('assessment');
+      if (inAuthGroup || (inOnboardingGroup && !isAssessmentScreen) || (segments.length as number) === 0) {
         router.replace('/(tabs)');
       }
     }
