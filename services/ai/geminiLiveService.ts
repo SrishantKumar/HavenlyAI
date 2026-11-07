@@ -75,10 +75,25 @@ export const geminiLiveService = {
 
     liveWs.onopen = () => {
       console.log('Gemini Live WS: Connected. Sending setup...');
+      const storeVoice = useAppStore.getState().settings.voice?.selectedLiveVoice;
+      const liveVoice = storeVoice && storeVoice !== 'Puck' ? storeVoice : 'Kore';
+
       liveWs!.send(JSON.stringify({
         setup: {
           model: `models/${AI_CONFIG.liveModel}`,
-          generationConfig: { responseModalities: ['TEXT'] },
+          generationConfig: {
+            responseModalities: ['TEXT'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: liveVoice,
+                },
+              },
+            },
+          },
+          voice: {
+            name: liveVoice,
+          },
           systemInstruction: { parts: [{ text: REALTIME_VOICE_INSTRUCTIONS }] },
         },
       }));
@@ -451,7 +466,8 @@ export const geminiLiveService = {
 
   speakTextResponse(text: string): void {
     const settings = useAppStore.getState().settings;
-    const liveVoice = settings.voice?.selectedLiveVoice || 'Kore';
+    const storeVoice = settings.voice?.selectedLiveVoice;
+    const liveVoice = storeVoice && storeVoice !== 'Puck' ? storeVoice : 'Kore';
     const selectedVoice = settings.voice?.selectedVoice;
 
     // Phase 2 & 3: Primary path using Vercel Edge TTS (msedge-tts neural audio)
@@ -495,17 +511,27 @@ export const geminiLiveService = {
             const match = voices.find((v: any) => v.name === selectedVoice || v.identifier === selectedVoice);
             if (match) voiceId = match.identifier;
           } catch (_) {}
-        } else {
+        }
+        
+        // Strictly fallback to premium female voice (Samantha / female_1 / etc.), never a robotic male default
+        if (!voiceId) {
           try {
             const voices = await Speech.getAvailableVoicesAsync();
-            const isFemale = liveVoice === 'Kore';
             const match = voices.find((v: any) => {
               const n = (v.name || '').toLowerCase();
+              const id = (v.identifier || '').toLowerCase();
               const l = (v.language || '').toLowerCase();
               if (!l.startsWith('en')) return false;
-              return isFemale
-                ? (n.includes('samantha') || n.includes('karen') || n.includes('female') || n.includes('ava') || n.includes('zira'))
-                : (n.includes('daniel') || n.includes('david') || n.includes('male') || n.includes('george') || n.includes('guy'));
+              return (
+                n.includes('samantha') ||
+                id.includes('samantha') ||
+                n.includes('female_1') ||
+                id.includes('female_1') ||
+                n.includes('ava') ||
+                n.includes('karen') ||
+                n.includes('zira') ||
+                n.includes('female')
+              );
             });
             if (match) voiceId = match.identifier;
           } catch (_) {}
@@ -535,8 +561,8 @@ export const geminiLiveService = {
         try {
           Speech.speak(text, {
             voice: voiceId,
-            rate: 0.93,
-            pitch: liveVoice === 'Charon' ? 0.92 : liveVoice === 'Kore' ? 0.98 : 0.95,
+            rate: 0.95, // Calibrated natural pacing
+            pitch: 1.0, // Natural human female pitch
             onComplete: done,
             onError: done,
           });

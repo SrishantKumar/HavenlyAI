@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Sun, Moon, Volume2, Shield, Info, AlertTriangle, Play, Square, Check, Volume1, Key } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, DEFAULT_PREMIUM_FEMALE_TTS } from '../../store/useAppStore';
 import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { storage } from '../../utils/storage';
 
@@ -23,9 +23,9 @@ import Header from '../../components/ui/Header';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 const GEMINI_LIVE_VOICES = [
+  { id: 'Kore', name: 'Kore', description: 'Warm, compassionate female tone (Default)', gender: 'female' },
   { id: 'Puck', name: 'Puck', description: 'Conversational, friendly male tone', gender: 'male' },
   { id: 'Charon', name: 'Charon', description: 'Empathetic, calm deep male tone', gender: 'male' },
-  { id: 'Kore', name: 'Kore', description: 'Warm, compassionate female tone', gender: 'female' },
   { id: 'Fenrir', name: 'Fenrir', description: 'Energetic, active male tone', gender: 'male' },
 ];
 
@@ -480,22 +480,24 @@ export default function SettingsScreen() {
             {/* In-app Voice Chat Synthesis Selection */}
             <Text style={[styles.subSectionTitle, { color: colors.text }]}>Voice Chat Speaker (TTS)</Text>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 12 }]}>
-              {/* Auto Voice Option */}
+              {/* Default Premium Female Voice Option */}
               <TouchableOpacity 
-                onPress={() => handleSelectVoice('default')}
+                onPress={() => handleSelectVoice(DEFAULT_PREMIUM_FEMALE_TTS)}
                 style={[
                   styles.voiceRow,
-                  settings.voice.selectedVoice === 'default' && { backgroundColor: colors.secondary }
+                  (settings.voice.selectedVoice === 'default' || settings.voice.selectedVoice === DEFAULT_PREMIUM_FEMALE_TTS) && { backgroundColor: colors.secondary }
                 ]}
               >
                 <View style={styles.voiceInfo}>
                   <IconVolume1 color={colors.primary} size={18} style={{ marginRight: 8 }} />
                   <View>
-                    <Text style={[styles.voiceName, { color: colors.text }]}>System Default Voice</Text>
-                    <Text style={[styles.voiceMeta, { color: colors.textMuted }]}>Auto-selected warm female register</Text>
+                    <Text style={[styles.voiceName, { color: colors.text }]}>Premium Female Register (Default)</Text>
+                    <Text style={[styles.voiceMeta, { color: colors.textMuted }]}>
+                      {Platform.OS === 'ios' ? 'Samantha (iOS Natural)' : Platform.OS === 'android' ? 'Natural Female (Android)' : 'Aria Neural (Edge TTS)'}
+                    </Text>
                   </View>
                 </View>
-                {settings.voice.selectedVoice === 'default' && <IconCheck color={colors.primary} size={18} />}
+                {(settings.voice.selectedVoice === 'default' || settings.voice.selectedVoice === DEFAULT_PREMIUM_FEMALE_TTS) && <IconCheck color={colors.primary} size={18} />}
               </TouchableOpacity>
 
               {/* Loaded Browser Voices */}
@@ -546,7 +548,7 @@ export default function SettingsScreen() {
             <Text style={[styles.subSectionTitle, { color: colors.text }]}>Live Call Voice (Gemini Live)</Text>
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {GEMINI_LIVE_VOICES.map((voice) => {
-                const currentLiveVoice = settings.voice.selectedLiveVoice || 'Puck';
+                const currentLiveVoice = settings.voice.selectedLiveVoice || 'Kore';
                 const isSelected = currentLiveVoice === voice.id;
                 const isPlaying = isPlayingPreview === `live_${voice.id}`;
 

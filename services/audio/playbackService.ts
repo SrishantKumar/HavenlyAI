@@ -48,10 +48,36 @@ export const playbackService = {
 
             if (selectedVoiceName && selectedVoiceName !== 'default') {
               const list = await Speech.getAvailableVoicesAsync();
-              const match = list.find((v: any) => v.name === selectedVoiceName);
+              const match = list.find((v: any) => v.name === selectedVoiceName || v.identifier === selectedVoiceName);
               if (match) {
                 selectedVoiceId = match.identifier;
               }
+            }
+
+            // Fallback strictly to premium natural female voice (Samantha, female_1, etc.)
+            if (!selectedVoiceId) {
+              try {
+                const list = await Speech.getAvailableVoicesAsync();
+                const match = list.find((v: any) => {
+                  const n = (v.name || '').toLowerCase();
+                  const id = (v.identifier || '').toLowerCase();
+                  const l = (v.language || '').toLowerCase();
+                  if (!l.startsWith('en')) return false;
+                  return (
+                    n.includes('samantha') ||
+                    id.includes('samantha') ||
+                    n.includes('female_1') ||
+                    id.includes('female_1') ||
+                    n.includes('ava') ||
+                    n.includes('karen') ||
+                    n.includes('zira') ||
+                    n.includes('female')
+                  );
+                });
+                if (match) {
+                  selectedVoiceId = match.identifier;
+                }
+              } catch (_) {}
             }
 
             if (onPlaybackStatusUpdateCallback) {
@@ -66,6 +92,8 @@ export const playbackService = {
 
             Speech.speak(text, {
               voice: selectedVoiceId,
+              pitch: 1.0,
+              rate: 0.95,
               onStart: () => {
                 if (onPlaybackStatusUpdateCallback) {
                   onPlaybackStatusUpdateCallback({
@@ -114,8 +142,8 @@ export const playbackService = {
           const utterance = new SpeechSynthesisUtterance(text);
           activeUtterance = utterance;
 
-          utterance.pitch = 1.1;
-          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.rate = 0.95;
           utterance.volume = 1.0;
 
           const selectedVoiceName = useAppStore.getState().settings.voice.selectedVoice;

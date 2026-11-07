@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { 
   User, 
   Conversation, 
@@ -12,6 +13,13 @@ import {
 } from '../types';
 import { storage } from '../utils/storage';
 import { supabase } from '../services/supabaseClient';
+
+export const DEFAULT_PREMIUM_FEMALE_TTS =
+  Platform.OS === 'ios'
+    ? 'com.apple.voice.compact.en-US.Samantha'
+    : Platform.OS === 'android'
+    ? 'en-us-x-sfg#female_1-local'
+    : 'en-US-AriaNeural';
 
 const ONBOARDING_STORAGE_KEY = 'havenly_onboarding_completed';
 const THEME_STORAGE_KEY = 'havenly_theme_preference';
@@ -130,12 +138,12 @@ export const useAppStore = create<AppState>((set, get) => {
     safetyLevel: 'none',
     showSafetySupport: false,
 
-    // Default settings
+    // Default settings: Enforcing premium, natural female voice register by default
     settings: {
       theme: 'system',
       voice: {
-        selectedVoice: 'default',
-        selectedLiveVoice: 'Puck',
+        selectedVoice: DEFAULT_PREMIUM_FEMALE_TTS,
+        selectedLiveVoice: 'Kore',
         autoplay: true,
         playbackSpeed: 1.0,
       },
@@ -309,10 +317,19 @@ export const useAppStore = create<AppState>((set, get) => {
       const savedTasksCompleted = await storage.getSecureItem(TASKS_COMPLETED_KEY);
       const savedActiveTaskStr = await storage.getSecureItem(ACTIVE_TASK_STORAGE_KEY);
 
-      let parsedSettings = {};
+      let parsedSettings: any = {};
       if (savedSettingsStr) {
         try {
           parsedSettings = JSON.parse(savedSettingsStr);
+          // Migrate legacy Puck or non-female defaults to premium female Kore / Aria
+          if (parsedSettings && typeof parsedSettings === 'object' && parsedSettings.voice) {
+            if (parsedSettings.voice.selectedLiveVoice === 'Puck' || !parsedSettings.voice.selectedLiveVoice) {
+              parsedSettings.voice.selectedLiveVoice = 'Kore';
+            }
+            if (parsedSettings.voice.selectedVoice === 'default' || !parsedSettings.voice.selectedVoice) {
+              parsedSettings.voice.selectedVoice = DEFAULT_PREMIUM_FEMALE_TTS;
+            }
+          }
         } catch (e) {
           console.warn('Failed to parse saved settings', e);
         }

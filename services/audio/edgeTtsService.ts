@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { CONFIG } from '../../constants/config';
+import { useAppStore } from '../../store/useAppStore';
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
@@ -35,13 +36,22 @@ export const edgeTtsService = {
    */
   async generateAndDownloadSpeech(
     text: string,
-    voice: string = 'en-US-AriaNeural'
+    voice?: string
   ): Promise<string | null> {
     const ttsUrl = CONFIG.vercelTtsUrl;
     if (!ttsUrl) {
       console.warn('[EdgeTTS] EXPO_PUBLIC_VERCEL_TTS_URL is not configured.');
       return null;
     }
+
+    const storeVoice = useAppStore.getState().settings.voice?.selectedVoice;
+    // Resolve female voice from store or default to AriaNeural
+    const activeVoice =
+      voice && voice !== 'default'
+        ? voice
+        : storeVoice && storeVoice.includes('Neural')
+        ? storeVoice
+        : 'en-US-AriaNeural';
 
     // Strip emojis so TTS synthesis remains clinical and calming
     const cleanText = text
@@ -58,7 +68,7 @@ export const edgeTtsService = {
     const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
-      console.log(`[EdgeTTS] Requesting neural speech from Vercel: "${cleanText.slice(0, 40)}..."`);
+      console.log(`[EdgeTTS] Requesting neural speech (${activeVoice}): "${cleanText.slice(0, 40)}..."`);
       const response = await fetch(ttsUrl, {
         method: 'POST',
         headers: {
@@ -67,7 +77,7 @@ export const edgeTtsService = {
         },
         body: JSON.stringify({
           text: cleanText,
-          voice: voice || 'en-US-AriaNeural',
+          voice: activeVoice,
         }),
         signal: controller.signal,
       });
