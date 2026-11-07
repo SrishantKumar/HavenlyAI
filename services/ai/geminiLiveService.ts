@@ -6,7 +6,7 @@ import { REALTIME_VOICE_INSTRUCTIONS } from './prompts';
 import { safetyService } from './safetyService';
 import { memoryService } from './memoryService';
 import { edgeTtsService } from '../audio/edgeTtsService';
-import { playbackService } from '../audio/playbackService';
+import { playbackService, savePcmAsWavFile } from '../audio/playbackService';
 
 export interface GeminiLiveCallbacks {
   onAudioReceived?: (pcm24kHzChunk: ArrayBuffer) => void;
@@ -28,6 +28,55 @@ let speechWatchdogTimeout: any = null;
 let activeAudioSource: any = null;
 let activeAudioContext: any = null;
 let activeConversationHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+
+// ─── Live Binary PCM Audio Queue ──────────────────────────────────────────────
+let livePcmQueue: string[] = [];
+let isPlayingLivePcm = false;
+
+function resetLivePcmQueue() {
+  livePcmQueue = [];
+  isPlayingLivePcm = false;
+}
+
+async function playNextLivePcmChunk() {
+  if (livePcmQueue.length === 0) {
+    isPlayingLivePcm = false;
+    isSpeakingResponse = false;
+    useAppStore.getState().setOrbState('listening');
+    geminiLiveService.callbacks.onStateChanged?.('connected');
+    setTimeout(() => geminiLiveService.restartRecognition(), 300);
+    return;
+  }
+
+  isPlayingLivePcm = true;
+  isSpeakingResponse = true;
+  useAppStore.getState().setOrbState('speaking');
+
+  // Concatenate all currently queued PCM chunks into a single continuous WAV file
+  const chunksToCombine = livePcmQueue.splice(0, livePcmQueue.length);
+
+  try {
+    const wavUri = await savePcmAsWavFile(chunksToCombine, 24000);
+    console.log(`[Gemini Live PCM] Created WAV from ${chunksToCombine.length} chunk(s) and starting playback: ${wavUri}`);
+
+    await playbackService.play(wavUri, (status) => {
+      geminiLiveService.callbacks.onAudioReceived?.(new ArrayBuffer(512));
+      if (status.didJustFinish) {
+        playNextLivePcmChunk();
+      }
+    });
+  } catch (err) {
+    console.error('[Gemini Live PCM] Playback error:', err);
+    playNextLivePcmChunk();
+  }
+}
+
+function enqueueLivePcmChunk(base64Data: string) {
+  livePcmQueue.push(base64Data);
+  if (!isPlayingLivePcm) {
+    playNextLivePcmChunk();
+  }
+}
 
 const LIVE_WS_BASE =
   'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
@@ -115,27 +164,10 @@ export const geminiLiveService = {
           // Handle real Kore PCM audio streamed from Gemini Live WebSocket
           const audioPart = parts.find((p: any) => p.inlineData && p.inlineData.data);
           if (audioPart) {
-            console.log('Gemini Live WS: Streaming native Kore audio from Gemini Live.');
-            isSpeakingResponse = true;
-            useAppStore.getState().setOrbState('speaking');
-            this.playPCM24kHzBase64(
-              audioPart.inlineData.data,
-              (chunk) => this.callbacks.onAudioReceived?.(chunk),
-              () => {
-                isSpeakingResponse = false;
-                useAppStore.getState().setOrbState('listening');
-                this.callbacks.onStateChanged?.('connected');
-                setTimeout(() => this.restartRecognition(), 300);
-              },
-              () => {
-                isSpeakingResponse = false;
-                useAppStore.getState().setOrbState('idle');
-                this.restartRecognition();
-              }
-            );
-          } else if (text.trim()) {
-            this.speakTextResponse(text);
+            console.log('Gemini Live WS: Received native Kore PCM audio chunk from Gemini Live.');
+            enqueueLivePcmChunk(audioPart.inlineData.data);
           }
+          // MANDATORY (Phase 1): In Live WebSocket mode, NEVER fall back to TTS or read text transcript aloud!
         }
       } catch (_) {}
     };
@@ -644,65 +676,44 @@ export const geminiLiveService = {
     onComplete: () => void,
     onError: () => void
   ): { stop: () => void } | null {
-    if (typeof window === 'undefined') return null;
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return null;
+    let stopped = false;
+    let tickInterval: any = setInterval(() => {
+      if (!stopped) onAudioTick(new ArrayBuffer(512));
+    }, 100);
 
-      const audioCtx = new AudioContextClass({ sampleRate: 24000 });
-      activeAudioContext = audioCtx;
-
-      const binary = atob(base64Data);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
-      const float32 = new Float32Array(int16.length);
-      for (let i = 0; i < int16.length; i++) {
-        float32[i] = int16[i] / 32768.0;
-      }
-
-      const buffer = audioCtx.createBuffer(1, float32.length, 24000);
-      buffer.getChannelData(0).set(float32);
-
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      activeAudioSource = source;
-
-      simulatedPlaybackInterval = setInterval(() => {
-        onAudioTick(new ArrayBuffer(512));
-      }, 100);
-
-      let ended = false;
-      const cleanup = () => {
-        if (ended) return;
-        ended = true;
-        this.cleanupPlayback();
-        if (activeAudioSource === source) activeAudioSource = null;
-        try { audioCtx.close(); } catch (_) {}
-        if (activeAudioContext === audioCtx) activeAudioContext = null;
-      };
-
-      source.onended = () => {
-        cleanup();
-        onComplete();
-      };
-
-      source.start();
-      return {
-        stop: () => {
-          cleanup();
-          try { source.stop(); } catch (_) {}
+    savePcmAsWavFile(base64Data, 24000)
+      .then((wavUri) => {
+        if (stopped) {
+          if (tickInterval) clearInterval(tickInterval);
+          return;
         }
-      };
-    } catch (err) {
-      console.error('Web Audio PCM playback failed:', err);
-      onError();
-      return null;
-    }
+        console.log(`[Gemini Live PCM] Created WAV file and started playback: ${wavUri}`);
+        playbackService
+          .play(wavUri, (status) => {
+            if (status.didJustFinish && !stopped) {
+              if (tickInterval) clearInterval(tickInterval);
+              onComplete();
+            }
+          })
+          .catch((err) => {
+            console.error('[Gemini Live PCM] Playback failed:', err);
+            if (tickInterval) clearInterval(tickInterval);
+            onError();
+          });
+      })
+      .catch((err) => {
+        console.error('[Gemini Live PCM] WAV conversion error:', err);
+        if (tickInterval) clearInterval(tickInterval);
+        onError();
+      });
+
+    return {
+      stop: () => {
+        stopped = true;
+        if (tickInterval) clearInterval(tickInterval);
+        playbackService.stop();
+      },
+    };
   },
 
   speakWithWebSpeech(text: string): void {
@@ -833,6 +844,8 @@ export const geminiLiveService = {
   disconnect(): void {
     speechSessionActive = false;
     isSpeakingResponse = false;
+    resetLivePcmQueue();
+    playbackService.stop();
     if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
     if (activeAudioSource) {
       try { activeAudioSource.stop(); } catch (_) {}
@@ -877,6 +890,8 @@ export const geminiLiveService = {
   sendAudio(_: ArrayBuffer): void {},
   sendText(text: string): void { if (text.trim()) this.processUserSpeech(text.trim()); },
   interrupt(): void {
+    resetLivePcmQueue();
+    playbackService.stop();
     if (speechWatchdogTimeout) { clearTimeout(speechWatchdogTimeout); speechWatchdogTimeout = null; }
     if (activeAudioSource) {
       try { activeAudioSource.stop(); } catch (_) {}

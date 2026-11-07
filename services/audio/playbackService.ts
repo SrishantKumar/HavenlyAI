@@ -12,6 +12,143 @@ try {
   console.warn('expo-audio package not found or failed to load in playbackService.');
 }
 
+const writeString = (view: DataView, offset: number, string: string) => {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+};
+
+/**
+ * Creates a standard 44-byte WAV header for raw 16-bit Mono PCM audio.
+ */
+export const createWavHeader = (pcmLength: number, sampleRate: number = 24000): Uint8Array => {
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+
+  // RIFF chunk descriptor
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + pcmLength, true);
+  writeString(view, 8, 'WAVE');
+
+  // FMT sub-chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+  view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
+  view.setUint16(22, 1, true); // NumChannels (1 for Mono)
+  view.setUint32(24, sampleRate, true); // SampleRate
+  view.setUint32(28, sampleRate * 2, true); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+  view.setUint16(32, 2, true); // BlockAlign
+  view.setUint16(34, 16, true); // BitsPerSample
+
+  // Data sub-chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, pcmLength, true);
+
+  return new Uint8Array(header);
+};
+
+const B64_MAP: { [char: string]: number } = {};
+const B64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+for (let i = 0; i < B64_ALPHABET.length; i++) {
+  B64_MAP[B64_ALPHABET[i]] = i;
+}
+
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const cleanB64 = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const len = cleanB64.length;
+  const byteLen = Math.floor((len * 3) / 4);
+  const bytes = new Uint8Array(byteLen);
+  let p = 0;
+  for (let i = 0; i < len; i += 4) {
+    const b0 = B64_MAP[cleanB64[i]] ?? 0;
+    const b1 = B64_MAP[cleanB64[i + 1]] ?? 0;
+    const b2 = i + 2 < len ? (B64_MAP[cleanB64[i + 2]] ?? 0) : 0;
+    const b3 = i + 3 < len ? (B64_MAP[cleanB64[i + 3]] ?? 0) : 0;
+
+    bytes[p++] = (b0 << 2) | (b1 >> 4);
+    if (i + 2 < len && p < byteLen) bytes[p++] = ((b1 & 15) << 4) | (b2 >> 2);
+    if (i + 3 < len && p < byteLen) bytes[p++] = ((b2 & 3) << 6) | b3;
+  }
+  return bytes;
+}
+
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const len = bytes.byteLength;
+  let base64 = '';
+  for (let i = 0; i < len; i += 3) {
+    const b0 = bytes[i];
+    const b1 = i + 1 < len ? bytes[i + 1] : 0;
+    const b2 = i + 2 < len ? bytes[i + 2] : 0;
+    base64 += B64_ALPHABET[b0 >> 2];
+    base64 += B64_ALPHABET[((b0 & 3) << 4) | (b1 >> 4)];
+    base64 += i + 1 < len ? B64_ALPHABET[((b1 & 15) << 2) | (b2 >> 6)] : '=';
+    base64 += i + 2 < len ? B64_ALPHABET[b2 & 63] : '=';
+  }
+  return base64;
+}
+
+export function pcmChunksToWav(
+  pcmByteArrays: Uint8Array[],
+  sampleRate: number = 24000
+): { wavBytes: Uint8Array; wavBase64: string } {
+  let totalPcmLength = 0;
+  for (const arr of pcmByteArrays) {
+    totalPcmLength += arr.length;
+  }
+
+  const header = createWavHeader(totalPcmLength, sampleRate);
+  const wavBytes = new Uint8Array(header.length + totalPcmLength);
+  wavBytes.set(header, 0);
+
+  let offset = header.length;
+  for (const arr of pcmByteArrays) {
+    wavBytes.set(arr, offset);
+    offset += arr.length;
+  }
+
+  const wavBase64 = uint8ArrayToBase64(wavBytes);
+  return { wavBytes, wavBase64 };
+}
+
+export function convertPcmBase64ToWav(
+  pcmBase64: string,
+  sampleRate: number = 24000
+): { wavBytes: Uint8Array; wavBase64: string } {
+  const pcmBytes = base64ToUint8Array(pcmBase64);
+  return pcmChunksToWav([pcmBytes], sampleRate);
+}
+
+/**
+ * Converts raw PCM base64 string(s) to a valid WAV audio file on the device filesystem
+ * (or a Blob URL on web) and returns the playable URI.
+ */
+export async function savePcmAsWavFile(
+  base64DataOrArray: string | string[],
+  sampleRate: number = 24000
+): Promise<string> {
+  const base64List = Array.isArray(base64DataOrArray) ? base64DataOrArray : [base64DataOrArray];
+  const pcmArrays = base64List.map((b64) => base64ToUint8Array(b64));
+  const { wavBytes, wavBase64 } = pcmChunksToWav(pcmArrays, sampleRate);
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const blob = new Blob([wavBytes as any], { type: 'audio/wav' });
+    const blobUrl = URL.createObjectURL(blob);
+    console.log(`[WAV Decoder] Created Web Audio WAV blob: ${blobUrl} (${wavBytes.length} bytes)`);
+    return blobUrl;
+  }
+
+  const FileSystem = require('expo-file-system/legacy');
+  const cacheDir = FileSystem.cacheDirectory || '';
+  const filePath = `${cacheDir}kore_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`;
+
+  await FileSystem.writeAsStringAsync(filePath, wavBase64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  console.log(`[WAV Decoder] Created WAV file from 24kHz PCM: ${filePath} (${wavBytes.length} bytes)`);
+  return filePath;
+}
+
 let playerInstance: any = null;
 let onPlaybackStatusUpdateCallback: ((status: any) => void) | null = null;
 let activeUtterance: any = null;
