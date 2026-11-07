@@ -35,6 +35,10 @@ export const audioService = {
     return playbackService.play(uri, onStatusUpdate);
   },
 
+  playHavenResponse(fileUri: string): Promise<void> {
+    return playbackService.playHavenResponse(fileUri);
+  },
+
   pausePlayback(): Promise<void> {
     return playbackService.pause();
   },

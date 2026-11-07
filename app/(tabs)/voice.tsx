@@ -8,6 +8,8 @@ import Header from '../../components/ui/Header';
 import VoiceRecorder from '../../components/voice/VoiceRecorder';
 import AudioPlayer from '../../components/voice/AudioPlayer';
 import GlassCard from '../../components/ui/GlassCard';
+import { edgeTtsService } from '../../services/audio/edgeTtsService';
+import { playbackService } from '../../services/audio/playbackService';
 
 export default function VoiceNoteScreen() {
   const isDark = useAppStore((state) => state.theme === 'dark');
@@ -37,8 +39,29 @@ export default function VoiceNoteScreen() {
         setTranscription(userMsg.content);
       }
       setAiTextResponse(assistantMsg.content);
-      // Playable audio URL
-      setAiAudioUrl(assistantMsg.audioUrl || null);
+      
+      // Phase 2, 3 & 5: Try Edge TTS to download neural speech and auto-play with HavenlyOrb sync
+      try {
+        const speechUri = await edgeTtsService.generateAndDownloadSpeech(assistantMsg.content);
+        if (speechUri) {
+          setAiAudioUrl(speechUri);
+          await playbackService.playHavenResponse(speechUri);
+        } else {
+          // Fallback if Vercel TTS times out or fails: immediate text presentation and momentary error pulse
+          setAiAudioUrl(assistantMsg.audioUrl || null);
+          useAppStore.getState().setOrbState('error');
+          setTimeout(() => {
+            useAppStore.getState().setOrbState('idle');
+          }, 1200);
+        }
+      } catch (ttsErr) {
+        console.warn('Edge TTS generation failed, falling back:', ttsErr);
+        setAiAudioUrl(assistantMsg.audioUrl || null);
+        useAppStore.getState().setOrbState('error');
+        setTimeout(() => {
+          useAppStore.getState().setOrbState('idle');
+        }, 1200);
+      }
     } catch (e) {
       console.warn('Failed to process voice reflection', e);
       setTranscription("We couldn't analyze the audio right now. Please try again.");

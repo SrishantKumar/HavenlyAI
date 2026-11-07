@@ -5,6 +5,8 @@ import { openRouterService, cleanModelResponse } from './openRouterService';
 import { REALTIME_VOICE_INSTRUCTIONS } from './prompts';
 import { safetyService } from './safetyService';
 import { memoryService } from './memoryService';
+import { edgeTtsService } from '../audio/edgeTtsService';
+import { playbackService } from '../audio/playbackService';
 
 export interface GeminiLiveCallbacks {
   onAudioReceived?: (pcm24kHzChunk: ArrayBuffer) => void;
@@ -169,6 +171,11 @@ export const geminiLiveService = {
       let finalTranscript = '';
 
       rec.onresult = (event: any) => {
+        const { orbState } = useAppStore.getState();
+        if (orbState === 'speaking') {
+          playbackService.stopPlayback();
+          isSpeakingResponse = false;
+        }
         if (isSpeakingResponse) return;
         let interim = '', hasFinal = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -447,14 +454,37 @@ export const geminiLiveService = {
     const liveVoice = settings.voice?.selectedLiveVoice || 'Kore';
     const selectedVoice = settings.voice?.selectedVoice;
 
-    // Use our calibrated human natural speech engine:
-    // Zero quota consumption, zero rate limits, unlimited free calls!
-    if (Platform.OS === 'web') {
-      this.speakWithWebSpeech(text, liveVoice, selectedVoice);
-      return;
-    }
+    // Phase 2 & 3: Primary path using Vercel Edge TTS (msedge-tts neural audio)
+    edgeTtsService
+      .generateAndDownloadSpeech(text)
+      .then(async (speechUri) => {
+        if (speechUri) {
+          isSpeakingResponse = true;
+          this.callbacks.onStateChanged?.('connected');
+          await playbackService.playHavenResponse(speechUri);
+          isSpeakingResponse = false;
+          return;
+        }
+        throw new Error('Edge TTS speech generation returned null.');
+      })
+      .catch((err) => {
+        console.warn('[GeminiLive] Edge TTS unavailable or timed out, triggering fallback:', err);
+        // Phase 5: UI Fallback: set Orb state to 'error' momentarily before returning to 'idle'
+        useAppStore.getState().setOrbState('error');
+        setTimeout(() => {
+          useAppStore.getState().setOrbState('idle');
+        }, 1200);
 
-    // Native expo-speech branch with voice preference mapping
+        // Fallback to local human calibrated voice synthesis
+        if (Platform.OS === 'web') {
+          this.speakWithWebSpeech(text, liveVoice, selectedVoice);
+        } else {
+          this.speakWithNativeSpeech(text, liveVoice, selectedVoice);
+        }
+      });
+  },
+
+  speakWithNativeSpeech(text: string, liveVoice: string, selectedVoice?: string): void {
     try {
       const Speech = require('expo-speech');
       const go = async () => {

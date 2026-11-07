@@ -332,38 +332,146 @@ export const playbackService = {
   },
 
   /**
-   * Stops the active audio playback and releases resources.
+   * Plays Haven's response audio, pulses HavenlyOrb in 'speaking' mode,
+   * synchronizes completion back to 'listening' or 'idle', and registers
+   * active audio player in Zustand for barge-in interruptions.
    */
-  async stop(): Promise<void> {
+  async playHavenResponse(fileUri: string): Promise<void> {
+    const store = useAppStore.getState();
+
+    // 1. Halt any running speech or audio playback before beginning
+    await this.stopPlayback();
+
+    // 2. Synchronize Zustand Orb state to 'speaking' so HavenlyOrb pulses immediately
+    store.setOrbState('speaking');
+
+    const handleFinished = () => {
+      const currentSession = useAppStore.getState().voiceSessionState;
+      // Return to 'listening' if session is live, or 'idle' when static
+      useAppStore.getState().setOrbState(currentSession === 'connected' ? 'listening' : 'idle');
+      useAppStore.getState().setAudioPlayerRef(null);
+    };
+
+    try {
+      if (setAudioModeAsync) {
+        await setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
+        });
+      }
+
+      if (createAudioPlayer) {
+        const player = createAudioPlayer(fileUri);
+        player.volume = 1.0;
+        playerInstance = player;
+        store.setAudioPlayerRef(player);
+
+        statusInterval = setInterval(() => {
+          if (playerInstance) {
+            const isPlaying = playerInstance.playing;
+            const position = (playerInstance.currentTime || 0) * 1000;
+            const duration = (playerInstance.duration || 0) * 1000;
+            const didJustFinish =
+              playerInstance.isLoaded && !isPlaying && (position >= duration - 150);
+
+            if (didJustFinish) {
+              if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+              }
+              handleFinished();
+            }
+          }
+        }, 150);
+
+        player.play();
+      } else if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+        const audio = new Audio(fileUri);
+        playerInstance = audio;
+        store.setAudioPlayerRef(audio);
+
+        audio.onended = () => {
+          handleFinished();
+        };
+        audio.onerror = () => {
+          console.warn('[PlaybackService] Audio player error encountered.');
+          handleFinished();
+        };
+
+        await audio.play();
+      } else {
+        console.warn('[PlaybackService] Playback not supported in current environment.');
+        handleFinished();
+      }
+    } catch (error) {
+      console.error('[PlaybackService] Failed to play Haven response audio:', error);
+      store.setOrbState('error');
+      setTimeout(() => {
+        handleFinished();
+      }, 1200);
+    }
+  },
+
+  /**
+   * Stops the active audio playback immediately for barge-in / interruption
+   * and resets orbState to 'listening'.
+   */
+  async stopPlayback(): Promise<void> {
     try {
       if (statusInterval) {
         clearInterval(statusInterval);
         statusInterval = null;
       }
-      if (playerInstance) {
-        try {
-          playerInstance.pause();
-        } catch (e) {}
-        playerInstance = null;
+
+      const store = useAppStore.getState();
+      const activeRef = store.audioPlayerRef || playerInstance;
+
+      if (activeRef) {
+        if (typeof activeRef.stopAsync === 'function') {
+          try { await activeRef.stopAsync(); } catch (_) {}
+        }
+        if (typeof activeRef.unloadAsync === 'function') {
+          try { await activeRef.unloadAsync(); } catch (_) {}
+        }
+        if (typeof activeRef.pause === 'function') {
+          try { activeRef.pause(); } catch (_) {}
+        }
+        if (typeof activeRef.remove === 'function') {
+          try { activeRef.remove(); } catch (_) {}
+        }
       }
 
-      // Stop native speech synthesis
+      playerInstance = null;
+      store.setAudioPlayerRef(null);
+
+      // Stop native speech synthesis if active
       if (Platform.OS !== 'web') {
         try {
           const Speech = require('expo-speech');
           Speech.stop();
-        } catch (e) {}
+        } catch (_) {}
       }
 
-      // Stop browser speech synthesis
+      // Stop browser speech synthesis if active
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
-      
+
       activeUtterance = null;
+      onPlaybackStatusUpdateCallback = null;
+
+      // Set orb state back to 'listening' for smooth conversation flow
+      store.setOrbState('listening');
     } catch (error) {
-      console.error('Failed to stop playback', error);
+      console.error('[PlaybackService] Error in stopPlayback:', error);
     }
+  },
+
+  /**
+   * Stops the active audio playback and releases resources.
+   */
+  async stop(): Promise<void> {
+    await this.stopPlayback();
   },
 
   /**

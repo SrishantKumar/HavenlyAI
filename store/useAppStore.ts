@@ -47,6 +47,7 @@ interface AppState {
   // Voice Session (Live / In-app realtime voice) State
   voiceSessionState: VoiceSessionState;
   orbState: OrbState;
+  audioPlayerRef: any | null;
   isMuted: boolean;
   microphonePermission: 'undetermined' | 'granted' | 'denied' | 'permanently_denied';
 
@@ -80,6 +81,7 @@ interface AppState {
   // Voice Actions
   setVoiceSessionState: (state: VoiceSessionState) => void;
   setOrbState: (state: OrbState) => void;
+  setAudioPlayerRef: (ref: any | null) => void;
   setIsMuted: (muted: boolean) => void;
   setMicrophonePermission: (status: AppState['microphonePermission']) => void;
 
@@ -120,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => {
     // Voice initial state
     voiceSessionState: 'idle',
     orbState: 'idle',
+    audioPlayerRef: null,
     isMuted: false,
     microphonePermission: 'undetermined',
 
@@ -373,6 +376,7 @@ export const useAppStore = create<AppState>((set, get) => {
       });
     },
     setOrbState: (orbState) => set({ orbState }),
+    setAudioPlayerRef: (audioPlayerRef) => set({ audioPlayerRef }),
     setIsMuted: (isMuted) => set({ isMuted }),
     setMicrophonePermission: (microphonePermission) => set({ microphonePermission }),
 

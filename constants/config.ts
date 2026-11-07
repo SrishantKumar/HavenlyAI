@@ -12,6 +12,7 @@ export const CONFIG = {
     return !this.geminiApiKey && !this.openRouterApiKey;
   },
   apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://api.havenly.ai/v1',
+  vercelTtsUrl: (process.env.EXPO_PUBLIC_VERCEL_TTS_URL || 'https://havenly-ai-tts.vercel.app/api/tts').trim(),
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
   get openRouterApiKey(): string {

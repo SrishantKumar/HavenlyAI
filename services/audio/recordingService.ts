@@ -1,4 +1,8 @@
 import { Platform } from 'react-native';
+import { useAppStore } from '../../store/useAppStore';
+import { playbackService } from './playbackService';
+
+const THRESHOLD = -35; // Decibel threshold for voice activity detection (VAD)
 
 let AudioModule: any = null;
 let requestRecordingPermissionsAsync: any = null;
@@ -31,6 +35,8 @@ interface WebRecordingSession {
 let webSession: WebRecordingSession | null = null;
 let recordingInstance: any = null;
 let isRecordingActive = false;
+let vadInterval: any = null;
+let webAudioCtx: any = null;
 
 export const recordingService = {
   /**
@@ -86,6 +92,44 @@ export const recordingService = {
         };
         mediaRecorder.start(250);
 
+        // Web Audio VAD: Real-time amplitude metering & decibel calculation for barge-in
+        const AudioContextClass =
+          typeof window !== 'undefined' &&
+          ((window as any).AudioContext || (window as any).webkitAudioContext);
+        if (AudioContextClass) {
+          try {
+            const audioCtx = new AudioContextClass();
+            webAudioCtx = audioCtx;
+            const sourceNode = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            sourceNode.connect(analyser);
+            const dataArray = new Float32Array(analyser.fftSize);
+
+            vadInterval = setInterval(() => {
+              if (!isRecordingActive) return;
+              analyser.getFloatTimeDomainData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i] * dataArray[i];
+              }
+              const rms = Math.sqrt(sum / dataArray.length);
+              const meteringDecibels = rms > 0 ? 20 * Math.log10(rms) : -160;
+
+              const { orbState } = useAppStore.getState();
+              // VAD Hookup: If user speaks while Haven is talking, cut off playback instantly
+              if (meteringDecibels > THRESHOLD && orbState === 'speaking') {
+                console.log(
+                  `[VAD] User speech detected (${meteringDecibels.toFixed(1)} dB > ${THRESHOLD} dB). Interrupting Haven.`
+                );
+                playbackService.stopPlayback();
+              }
+            }, 100);
+          } catch (e) {
+            console.warn('[VAD] Failed to initialize web audio analyzer:', e);
+          }
+        }
+
         // Optional parallel Web Speech Recognition to capture text transcript
         let speechRec: any = null;
         const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -96,6 +140,12 @@ export const recordingService = {
             speechRec.interimResults = true;
             speechRec.lang = 'en-US';
             speechRec.onresult = (event: any) => {
+              // Immediate interruption if user speaks during assistant audio
+              const { orbState } = useAppStore.getState();
+              if (orbState === 'speaking') {
+                playbackService.stopPlayback();
+              }
+
               let full = '';
               for (let i = 0; i < event.results.length; ++i) {
                 full += event.results[i][0].transcript + ' ';
@@ -140,10 +190,29 @@ export const recordingService = {
       }
 
       if (AudioModule && AudioModule.AudioRecorder && RecordingPresets) {
-        const recording = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
+        const recordingOptions = {
+          ...RecordingPresets.HIGH_QUALITY,
+          isMeteringEnabled: true,
+        };
+        const recording = new AudioModule.AudioRecorder(recordingOptions);
         await recording.prepareToRecordAsync();
         recording.record();
         recordingInstance = recording;
+
+        vadInterval = setInterval(async () => {
+          if (!isRecordingActive || !recordingInstance) return;
+          try {
+            const status = typeof recordingInstance.getStatus === 'function' ? await recordingInstance.getStatus() : null;
+            const meteringDecibels = status?.metering ?? -160;
+            const { orbState } = useAppStore.getState();
+            if (meteringDecibels > THRESHOLD && orbState === 'speaking') {
+              console.log(
+                `[VAD Native] User speech detected (${meteringDecibels} dB > ${THRESHOLD} dB). Interrupting Haven.`
+              );
+              playbackService.stopPlayback();
+            }
+          } catch (_) {}
+        }, 100);
       }
 
       isRecordingActive = true;
@@ -288,6 +357,16 @@ export const recordingService = {
    */
   async cleanup(): Promise<void> {
     isRecordingActive = false;
+    if (vadInterval) {
+      clearInterval(vadInterval);
+      vadInterval = null;
+    }
+    if (webAudioCtx) {
+      try {
+        await webAudioCtx.close();
+      } catch (_) {}
+      webAudioCtx = null;
+    }
     if (webSession) {
       try {
         if (webSession.speechRec) webSession.speechRec.stop();
