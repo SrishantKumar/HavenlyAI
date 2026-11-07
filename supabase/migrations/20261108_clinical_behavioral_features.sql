@@ -117,7 +117,7 @@ ON CONFLICT (id) DO UPDATE SET
   public = false,
   allowed_mime_types = ARRAY['application/pdf'];
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Note: storage.objects already has RLS enabled by default in Supabase (owned by supabase_storage_admin).
 
 DO $$ 
 BEGIN
@@ -163,3 +163,4 @@ BEGIN
       );
   END IF;
 END $$;
+
