@@ -10,6 +10,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="realtime-voice" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="safety" />
+      <Stack.Screen name="assessment" />
     </Stack>
   );
 }

@@ -8,6 +8,7 @@ import { authService } from '../services/auth/authService';
 import { COLORS } from '../constants/theme';
 import SafetySupportCard from '../components/safety/SafetySupportCard';
 import { notificationService } from '../services/notifications/notificationService';
+import { requestNotificationPermissions } from '../services/notifications/taskScheduler';
 
 function InitialLayout() {
   const { 
@@ -41,8 +42,9 @@ function InitialLayout() {
       } finally {
         setAuthLoading(false);
         setAppReady(true);
-        // Initialize notifications in the background
+        // Initialize notifications & behavioral task scheduler permissions in the background
         notificationService.init().catch(console.warn);
+        requestNotificationPermissions().catch(console.warn);
       }
     }
     initSession();

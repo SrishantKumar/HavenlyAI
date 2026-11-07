@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, MessageSquare, ChevronRight, Trash2 } from 'lucide-react-native';
+import { Plus, MessageSquare, ChevronRight, Archive } from 'lucide-react-native';
 const IconPlus = Plus as any;
 const IconMessageSquare = MessageSquare as any;
 const IconChevronRight = ChevronRight as any;
-const IconTrash2 = Trash2 as any;
+const IconArchive = Archive as any;
 
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
@@ -19,11 +19,11 @@ import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 export default function ChatListScreen() {
   const router = useRouter();
-  const { theme, conversations, setConversations } = useAppStore();
+  const { theme, conversations, setConversations, archiveConversation } = useAppStore();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
   
   const [loading, setLoading] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [archiveModalVisible, setArchiveModalVisible] = useState(false);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
 
   const loadConversations = async () => {
@@ -54,20 +54,20 @@ export default function ChatListScreen() {
 
   const textConversations = conversations.filter(c => c.type === 'text');
 
-  const triggerDelete = (id: string) => {
+  const triggerArchive = (id: string) => {
     setSelectedConvId(id);
-    setDeleteModalVisible(true);
+    setArchiveModalVisible(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmArchive = async () => {
     if (!selectedConvId) return;
     try {
-      await chatService.deleteConversation(selectedConvId);
+      await archiveConversation(selectedConvId);
       await loadConversations();
     } catch (e) {
       console.warn(e);
     } finally {
-      setDeleteModalVisible(false);
+      setArchiveModalVisible(false);
       setSelectedConvId(null);
     }
   };
@@ -77,14 +77,14 @@ export default function ChatListScreen() {
       <Header title="Text Reflections" />
 
       <ConfirmationModal
-        visible={deleteModalVisible}
-        title="Delete this reflection?"
-        message="Once deleted, this conversation cannot be restored. Your thoughts here will be deleted forever."
-        confirmLabel="Delete"
+        visible={archiveModalVisible}
+        title="Archive this reflection?"
+        message="Archiving hides this reflection from your active screen while preserving its context for Haven's continuous emotional support."
+        confirmLabel="Archive"
         cancelLabel="Cancel"
-        isDestructive
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteModalVisible(false)}
+        isDestructive={false}
+        onConfirm={handleConfirmArchive}
+        onCancel={() => setArchiveModalVisible(false)}
       />
 
       {textConversations.length === 0 ? (
@@ -126,11 +126,11 @@ export default function ChatListScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => triggerDelete(item.id)}
+                  onPress={() => triggerArchive(item.id)}
                   style={styles.deleteBtn}
-                  accessibilityLabel="Delete reflection"
+                  accessibilityLabel="Archive reflection"
                 >
-                  <IconTrash2 color={colors.textMuted} size={18} />
+                  <IconArchive color={colors.textMuted} size={18} />
                 </TouchableOpacity>
               </TouchableOpacity>
             )}

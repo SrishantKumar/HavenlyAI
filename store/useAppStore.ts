@@ -7,13 +7,19 @@ import {
   OrbState, 
   SafetyLevel, 
   Settings,
-  EmotionType
+  EmotionType,
+  BehavioralTask
 } from '../types';
 import { storage } from '../utils/storage';
+import { supabase } from '../services/supabaseClient';
 
 const ONBOARDING_STORAGE_KEY = 'havenly_onboarding_completed';
 const THEME_STORAGE_KEY = 'havenly_theme_preference';
 const SETTINGS_STORAGE_KEY = 'havenly_settings_preference';
+const PHQ4_STORAGE_KEY = 'havenly_phq4_score';
+const PHQ4_DATE_STORAGE_KEY = 'havenly_phq4_date';
+const TASKS_COMPLETED_KEY = 'havenly_tasks_completed';
+const ACTIVE_TASK_STORAGE_KEY = 'havenly_active_behavioral_task';
 
 interface AppState {
   // Auth State
@@ -22,6 +28,12 @@ interface AppState {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   onboardingComplete: boolean;
+
+  // Psychometric & Behavioral State
+  phq4Score: number | null;
+  phq4CompletedAt: string | null;
+  behavioralTasksCompleted: number;
+  activeBehavioralTask: BehavioralTask | null;
 
   // Theme & Layout
   theme: 'system' | 'light' | 'dark';
@@ -50,6 +62,12 @@ interface AppState {
   setAuthLoading: (loading: boolean) => void;
   setOnboardingComplete: (complete: boolean) => void;
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
+
+  // Psychometric & Behavioral Actions
+  setPhq4Baseline: (score: number) => Promise<void>;
+  setBehavioralTasksCompleted: (count: number) => void;
+  incrementBehavioralTasksCompleted: () => Promise<void>;
+  setActiveBehavioralTask: (task: BehavioralTask | null) => Promise<void>;
   
   // Chat Actions
   setConversations: (conversations: Conversation[]) => void;
@@ -57,6 +75,7 @@ interface AppState {
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
   setChatLoading: (loading: boolean) => void;
+  archiveConversation: (conversationId: string) => Promise<void>;
 
   // Voice Actions
   setVoiceSessionState: (state: VoiceSessionState) => void;
@@ -82,6 +101,12 @@ export const useAppStore = create<AppState>((set, get) => {
     isAuthenticated: false,
     isAuthLoading: true,
     onboardingComplete: false,
+
+    // Psychometric & Behavioral Initial State
+    phq4Score: null,
+    phq4CompletedAt: null,
+    behavioralTasksCompleted: 0,
+    activeBehavioralTask: null,
 
     // Theme initial state
     theme: 'system',
@@ -133,6 +158,41 @@ export const useAppStore = create<AppState>((set, get) => {
         isAuthenticated: !!user,
         isAuthLoading: false 
       });
+
+      // Synchronize psychometric baseline & gamification state from Supabase if logged in
+      if (user?.id) {
+        (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('user_profiles')
+              .select('phq4_score, phq4_completed_at, behavioral_tasks_completed')
+              .eq('user_id', user.id)
+              .single();
+
+            if (!error && data) {
+              const phq4Score = data.phq4_score ?? null;
+              const phq4CompletedAt = data.phq4_completed_at ?? null;
+              const behavioralTasksCompleted = data.behavioral_tasks_completed ?? 0;
+              set({
+                phq4Score,
+                phq4CompletedAt,
+                behavioralTasksCompleted,
+                user: {
+                  ...user,
+                  phq4Score,
+                  phq4CompletedAt,
+                  behavioralTasksCompleted,
+                },
+              });
+              if (phq4Score !== null) storage.setSecureItem(PHQ4_STORAGE_KEY, String(phq4Score));
+              if (phq4CompletedAt) storage.setSecureItem(PHQ4_DATE_STORAGE_KEY, phq4CompletedAt);
+              storage.setSecureItem(TASKS_COMPLETED_KEY, String(behavioralTasksCompleted));
+            }
+          } catch (err) {
+            console.warn('Could not sync user profile metrics:', err);
+          }
+        })();
+      }
     },
     setAuthLoading: (loading) => set({ isAuthLoading: loading }),
     setOnboardingComplete: (complete) => {
@@ -146,10 +206,106 @@ export const useAppStore = create<AppState>((set, get) => {
         settings: { ...state.settings, theme }
       }));
     },
+
+    // Psychometric & Behavioral Actions
+    setPhq4Baseline: async (score: number) => {
+      const timestamp = new Date().toISOString();
+      await storage.setSecureItem(PHQ4_STORAGE_KEY, String(score));
+      await storage.setSecureItem(PHQ4_DATE_STORAGE_KEY, timestamp);
+
+      set((state) => ({
+        phq4Score: score,
+        phq4CompletedAt: timestamp,
+        user: state.user ? {
+          ...state.user,
+          phq4Score: score,
+          phq4CompletedAt: timestamp,
+        } : null
+      }));
+
+      // Persist to Supabase user_profiles
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('user_profiles')
+            .upsert(
+              {
+                user_id: user.id,
+                phq4_score: score,
+                phq4_completed_at: timestamp,
+                updated_at: timestamp,
+              },
+              { onConflict: 'user_id' }
+            );
+        }
+      } catch (e) {
+        console.warn('Failed to upsert PHQ-4 score to Supabase:', e);
+      }
+    },
+
+    setBehavioralTasksCompleted: (count: number) => {
+      storage.setSecureItem(TASKS_COMPLETED_KEY, String(count));
+      set((state) => ({
+        behavioralTasksCompleted: count,
+        user: state.user ? { ...state.user, behavioralTasksCompleted: count } : null,
+      }));
+    },
+
+    incrementBehavioralTasksCompleted: async () => {
+      const nextCount = (get().behavioralTasksCompleted || 0) + 1;
+      await storage.setSecureItem(TASKS_COMPLETED_KEY, String(nextCount));
+
+      const currentActive = get().activeBehavioralTask;
+      const updatedActive = currentActive ? { ...currentActive, isCompleted: true } : null;
+      if (updatedActive) {
+        await storage.setSecureItem(ACTIVE_TASK_STORAGE_KEY, JSON.stringify(updatedActive));
+      }
+
+      set((state) => ({
+        behavioralTasksCompleted: nextCount,
+        activeBehavioralTask: updatedActive,
+        user: state.user ? { ...state.user, behavioralTasksCompleted: nextCount } : null,
+      }));
+
+      // Persist to Supabase
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('user_profiles')
+            .upsert(
+              {
+                user_id: user.id,
+                behavioral_tasks_completed: nextCount,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id' }
+            );
+        }
+      } catch (e) {
+        console.warn('Failed to sync behavioralTasksCompleted to Supabase:', e);
+      }
+    },
+
+    setActiveBehavioralTask: async (task: BehavioralTask | null) => {
+      if (task) {
+        await storage.setSecureItem(ACTIVE_TASK_STORAGE_KEY, JSON.stringify(task));
+      } else {
+        await storage.deleteSecureItem(ACTIVE_TASK_STORAGE_KEY);
+      }
+      set({ activeBehavioralTask: task });
+    },
+
     initStore: async () => {
       const savedOnboarding = await storage.getSecureItem(ONBOARDING_STORAGE_KEY);
       const savedTheme = (await storage.getSecureItem(THEME_STORAGE_KEY)) || 'system';
       const savedSettingsStr = await storage.getSecureItem(SETTINGS_STORAGE_KEY);
+      const savedPhq4 = await storage.getSecureItem(PHQ4_STORAGE_KEY);
+      const savedPhq4Date = await storage.getSecureItem(PHQ4_DATE_STORAGE_KEY);
+      const savedTasksCompleted = await storage.getSecureItem(TASKS_COMPLETED_KEY);
+      const savedActiveTaskStr = await storage.getSecureItem(ACTIVE_TASK_STORAGE_KEY);
+
       let parsedSettings = {};
       if (savedSettingsStr) {
         try {
@@ -158,11 +314,22 @@ export const useAppStore = create<AppState>((set, get) => {
           console.warn('Failed to parse saved settings', e);
         }
       }
+
+      let parsedActiveTask: BehavioralTask | null = null;
+      if (savedActiveTaskStr) {
+        try {
+          parsedActiveTask = JSON.parse(savedActiveTaskStr);
+        } catch (_) {}
+      }
       
       set((state) => ({
         onboardingComplete: savedOnboarding === 'true',
         theme: savedTheme as 'system' | 'light' | 'dark',
-        settings: { ...state.settings, ...parsedSettings, theme: savedTheme as 'system' | 'light' | 'dark' }
+        settings: { ...state.settings, ...parsedSettings, theme: savedTheme as 'system' | 'light' | 'dark' },
+        phq4Score: savedPhq4 ? parseInt(savedPhq4, 10) : null,
+        phq4CompletedAt: savedPhq4Date || null,
+        behavioralTasksCompleted: savedTasksCompleted ? parseInt(savedTasksCompleted, 10) : 0,
+        activeBehavioralTask: parsedActiveTask,
       }));
     },
 
@@ -172,6 +339,24 @@ export const useAppStore = create<AppState>((set, get) => {
     setMessages: (messages) => set({ messages }),
     addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
     setChatLoading: (loading) => set({ isChatLoading: loading }),
+
+    archiveConversation: async (conversationId: string) => {
+      // Soft-archive in local Zustand state immediately
+      set((state) => ({
+        conversations: state.conversations.filter((c) => c.id !== conversationId),
+        activeConversation: state.activeConversation?.id === conversationId ? null : state.activeConversation,
+      }));
+
+      // Update Supabase conversations row
+      try {
+        await supabase
+          .from('conversations')
+          .update({ is_archived: true })
+          .eq('id', conversationId);
+      } catch (e) {
+        console.warn('Supabase archiveConversation error:', e);
+      }
+    },
 
     // Voice actions
     setVoiceSessionState: (state) => {
@@ -207,11 +392,19 @@ export const useAppStore = create<AppState>((set, get) => {
       storage.deleteSecureItem(ONBOARDING_STORAGE_KEY);
       storage.deleteSecureItem(THEME_STORAGE_KEY);
       storage.deleteSecureItem(SETTINGS_STORAGE_KEY);
+      storage.deleteSecureItem(PHQ4_STORAGE_KEY);
+      storage.deleteSecureItem(PHQ4_DATE_STORAGE_KEY);
+      storage.deleteSecureItem(TASKS_COMPLETED_KEY);
+      storage.deleteSecureItem(ACTIVE_TASK_STORAGE_KEY);
       set({
         user: null,
         token: null,
         isAuthenticated: false,
         onboardingComplete: false,
+        phq4Score: null,
+        phq4CompletedAt: null,
+        behavioralTasksCompleted: 0,
+        activeBehavioralTask: null,
         conversations: [],
         activeConversation: null,
         messages: [],

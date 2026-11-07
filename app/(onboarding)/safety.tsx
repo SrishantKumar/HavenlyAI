@@ -15,9 +15,8 @@ export default function OnboardingSafety() {
   const colors = isDark ? COLORS.dark : COLORS.light;
 
   const handleFinish = () => {
-    // Persist completed onboarding state and redirect to index (Tabs)
-    setOnboardingComplete(true);
-    router.replace('/(tabs)');
+    // Navigate to the PHQ-4 baseline assessment step before finishing onboarding
+    router.push('/(onboarding)/assessment');
   };
 
   return (
@@ -26,7 +25,7 @@ export default function OnboardingSafety() {
       title="HavenlyAI cares about your safety."
       description="HavenlyAI can listen, support, and help you reflect, but it is not a clinical replacement for professional medical care. If you're in immediate danger, please contact local emergency hotlines or a trusted person."
       onContinue={handleFinish}
-      continueLabel="Enter HavenlyAI"
+      continueLabel="Next: Baseline Assessment"
     >
       <View style={[styles.box, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <IconHeartHandshake color={colors.error} size={54} />

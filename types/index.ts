@@ -31,7 +31,20 @@ export interface User {
   phoneNumber?: string;
   avatarUrl?: string;
   createdAt: string;
+  phq4Score?: number | null;
+  phq4CompletedAt?: string | null;
+  behavioralTasksCompleted?: number;
 }
+
+export interface BehavioralTask {
+  id?: string;
+  task: string;
+  rationale: string;
+  scheduledFor?: string;
+  isCompleted?: boolean;
+}
+
+export type OrbThemeId = 'default' | 'aurora' | 'deep_ocean' | 'ember';
 
 export interface Message {
   id: string;
@@ -52,6 +65,7 @@ export interface Conversation {
   updatedAt: string;
   type: 'text' | 'voice' | 'live';
   lastMessageText?: string;
+  isArchived?: boolean;
 }
 
 export interface AudioMessage {

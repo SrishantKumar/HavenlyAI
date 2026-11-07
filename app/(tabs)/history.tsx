@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Trash2, MessageSquare, Mic, Phone, ChevronRight } from 'lucide-react-native';
+import { Search, Archive, MessageSquare, Mic, Phone, ChevronRight } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
 import { useRouter } from 'expo-router';
 
 const IconSearch = Search as any;
-const IconTrash2 = Trash2 as any;
+const IconArchive = Archive as any;
 const IconMessageSquare = MessageSquare as any;
 const IconMic = Mic as any;
 const IconPhone = Phone as any;
@@ -22,15 +22,15 @@ type HistoryTab = 'all' | 'text' | 'voice' | 'live';
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { theme, conversations, setConversations } = useAppStore();
+  const { theme, conversations, setConversations, archiveConversation } = useAppStore();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
 
   const [activeTab, setActiveTab] = useState<HistoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Deletion modal state
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  // Archival modal state (Phase 4: Soft Archive)
+  const [archiveModalVisible, setArchiveModalVisible] = useState(false);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
 
   const loadHistory = async () => {
@@ -49,21 +49,20 @@ export default function HistoryScreen() {
     loadHistory();
   }, []);
 
-  const triggerDelete = (id: string) => {
+  const triggerArchive = (id: string) => {
     setSelectedConvId(id);
-    setDeleteModalVisible(true);
+    setArchiveModalVisible(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmArchive = async () => {
     if (!selectedConvId) return;
     try {
-      await chatService.deleteConversation(selectedConvId);
-      // Refresh local list
+      await archiveConversation(selectedConvId);
       await loadHistory();
     } catch (e) {
       console.warn(e);
     } finally {
-      setDeleteModalVisible(false);
+      setArchiveModalVisible(false);
       setSelectedConvId(null);
     }
   };
@@ -107,16 +106,16 @@ export default function HistoryScreen() {
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <Header title="Your History" />
 
-      {/* Confirmation Deletion Modal */}
+      {/* Confirmation Archival Modal (Soft Delete) */}
       <ConfirmationModal
-        visible={deleteModalVisible}
-        title="Delete this reflection?"
-        message="Once deleted, this conversation cannot be restored. Your thoughts here will be deleted forever."
-        confirmLabel="Delete"
+        visible={archiveModalVisible}
+        title="Archive this reflection?"
+        message="Archiving removes this conversation from your active reflections while allowing Haven to retain its emotional context for your ongoing wellness."
+        confirmLabel="Archive"
         cancelLabel="Cancel"
-        isDestructive
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteModalVisible(false)}
+        isDestructive={false}
+        onConfirm={handleConfirmArchive}
+        onCancel={() => setArchiveModalVisible(false)}
       />
 
       <View style={styles.container}>
@@ -181,13 +180,13 @@ export default function HistoryScreen() {
                   </View>
                 </TouchableOpacity>
 
-                {/* Deletion Trigger */}
+                {/* Archival Trigger (Soft Delete) */}
                 <TouchableOpacity
-                  onPress={() => triggerDelete(item.id)}
+                  onPress={() => triggerArchive(item.id)}
                   style={styles.deleteBtn}
-                  accessibilityLabel="Delete reflection"
+                  accessibilityLabel="Archive reflection"
                 >
-                  <IconTrash2 color={colors.textMuted} size={18} />
+                  <IconArchive color={colors.textMuted} size={18} />
                 </TouchableOpacity>
               </View>
             )}

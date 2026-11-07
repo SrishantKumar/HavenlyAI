@@ -3,6 +3,7 @@ import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { Message } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { openRouterService } from './openRouterService';
+import { scheduleActivationTask } from '../notifications/taskScheduler';
 
 export const memoryService = {
   /**
@@ -100,11 +101,50 @@ export const memoryService = {
   },
 
   /**
+   * Fetches longitudinal wellness history across ALL user conversations.
+   * CRITICAL ARCHITECTURAL DIRECTIVE (Phase 4):
+   * This query deliberately IGNORES the `is_archived` column so that the AI continues
+   * to learn from and retain the longitudinal therapeutic pattern even when the user
+   * soft-archives a conversation to hide it from their active screen.
+   */
+  async getLongitudinalWellnessContext(): Promise<string> {
+    if (CONFIG.isDemoMode) return '';
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return '';
+
+      // Deliberately query conversations WITHOUT filtering is_archived = false
+      const { data: convs, error } = await supabase
+        .from('conversations')
+        .select('id, title, type, last_message_text, created_at, is_archived')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error || !convs || convs.length === 0) return '';
+
+      const items = convs.map((c) => {
+        const archivedNote = c.is_archived ? ' [Archived Reflection]' : '';
+        return `- ${c.title}${archivedNote}: "${c.last_message_text || 'Reflection session'}" (${new Date(c.created_at).toLocaleDateString()})`;
+      });
+
+      return `Longitudinal Wellness History (includes archived reflections for emotional continuity):\n${items.join('\n')}`;
+    } catch (e) {
+      console.warn('Failed to fetch longitudinal wellness context:', e);
+      return '';
+    }
+  },
+
+  /**
    * Extracts new insights from a conversation and merges them with the existing memory summary.
+   * PHASE 3 DIRECTIVE:
+   * Extracts structured JSON containing both the updated memory summary AND a concrete,
+   * offline behavioral activation task (physical/social action) with clinical rationale.
    */
   async evolveMemoryProfile(conversationHistory: Message[]): Promise<void> {
     if (CONFIG.isDemoMode) return;
-    if (conversationHistory.length < 4) return;
+    if (conversationHistory.length < 3) return;
 
     try {
       const currentMemory = await this.getMemoryProfile();
@@ -115,26 +155,31 @@ export const memoryService = {
         .join('\n');
 
       const prompt = `
-You are a memory consolidation AI for HavenlyAI.
+You are a therapeutic memory consolidation and behavioral activation AI for HavenlyAI.
 Current Memory Profile about the user: "${currentMemory}"
 
 Recent Conversation:
 ${chatContext}
 
-Your task is to extract any long-term facts, emotional triggers, personal details (such as the user's name if mentioned), or healing progress from the recent conversation. 
-If there are new insights, merge them with the Current Memory Profile to create an updated, concise summary (under 150 words). 
-If nothing significant was mentioned that warrants long-term memory, return the Current Memory Profile exactly as it is.
-Focus on: their name, relationships, recurring stressors, goals, and what helps them heal.
-Return ONLY the updated memory summary text.
+Your task:
+1. Extract any long-term facts, emotional triggers, personal details (such as the user's name if mentioned), or healing progress from the recent conversation. Merge them into a concise updated memory summary (under 150 words).
+2. Suggest an offline, physical, or social behavioral activation task based on the conversation context to help the user break depressive/anxious feedback loops. Provide a brief clinical rationale. Example: "Take a 10-minute walk outside without headphones."
+
+Return ONLY a valid JSON object with NO markdown, NO code fences, and NO explanation, following this schema:
+{
+  "memory_summary": "Concise updated memory profile string under 150 words",
+  "suggested_behavioral_task": "Actionable, concrete offline physical or social task (e.g. 'Take a 10-minute walk outside without headphones.')",
+  "rationale": "Brief rationale explaining how this helps break rumination or grounding."
+}
 `;
 
-      let updatedMemory: string | null = null;
+      let rawOutput: string | null = null;
 
       // 1. Try OpenRouter free models first
       if (CONFIG.openRouterApiKey) {
         try {
-          updatedMemory = await openRouterService.generateCompletion(
-            'You are a precise memory consolidation assistant. Return only the updated memory summary.',
+          rawOutput = await openRouterService.generateCompletion(
+            'You are a memory consolidation and behavioral activation AI. Output only valid JSON with no formatting.',
             [],
             prompt
           );
@@ -142,38 +187,73 @@ Return ONLY the updated memory summary text.
       }
 
       // 2. Fall back to Gemini if available
-      if (!updatedMemory && CONFIG.geminiApiKey) {
+      if (!rawOutput && CONFIG.geminiApiKey) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.1 },
+            generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          updatedMemory = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+          rawOutput = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
         }
       }
 
-      if (updatedMemory) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+      if (rawOutput) {
+        let parsed: {
+          memory_summary?: string;
+          suggested_behavioral_task?: string;
+          rationale?: string;
+        } | null = null;
 
-        // Upsert the new memory profile
-        await supabase
-          .from('user_profiles')
-          .upsert(
-            {
-              user_id: user.id,
-              memory_summary: updatedMemory,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'user_id' }
-          );
+        try {
+          // Clean JSON markdown if model wrapped it
+          const cleanJson = rawOutput.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          parsed = JSON.parse(cleanJson);
+        } catch (parseErr) {
+          console.warn('Could not parse memory consolidation JSON, using raw text as summary:', parseErr);
+          parsed = { memory_summary: rawOutput };
+        }
+
+        const updatedMemory = parsed?.memory_summary?.trim() || null;
+        const suggestedTask = parsed?.suggested_behavioral_task?.trim() || null;
+        const rationale = parsed?.rationale?.trim() || '';
+
+        // 1. Handle Behavioral Activation Task (Phase 3)
+        if (suggestedTask) {
+          console.log('[Behavioral Activation] New task generated:', suggestedTask);
+          const taskObj = {
+            task: suggestedTask,
+            rationale,
+            scheduledFor: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            isCompleted: false,
+          };
+          await useAppStore.getState().setActiveBehavioralTask(taskObj);
+          // Schedule local push notification 24 hours later
+          await scheduleActivationTask(suggestedTask, rationale);
+        }
+
+        // 2. Persist updated memory summary to Supabase user_profiles
+        if (updatedMemory) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('user_profiles')
+              .upsert(
+                {
+                  user_id: user.id,
+                  memory_summary: updatedMemory,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'user_id' }
+              );
+          }
+        }
       }
     } catch (e) {
       console.warn('Failed to evolve memory profile:', e);

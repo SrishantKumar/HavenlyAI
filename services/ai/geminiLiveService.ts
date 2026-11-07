@@ -785,6 +785,19 @@ export const geminiLiveService = {
     activeUtterance = null;
     this.callbacks.onStateChanged?.('disconnected');
     console.log('Gemini Live: Session ended.');
+
+    // Consolidate voice session insights & generate behavioral activation task (Phase 3)
+    if (activeConversationHistory.length >= 2) {
+      const historyToSave = activeConversationHistory.map((turn, i) => ({
+        id: `voice_${Date.now()}_${i}`,
+        conversationId: 'voice_session',
+        role: (turn.role === 'user' ? 'user' : 'assistant') as any,
+        content: turn.parts?.[0]?.text || '',
+        timestamp: new Date().toISOString(),
+        messageType: 'voice' as any,
+      }));
+      memoryService.evolveMemoryProfile(historyToSave).catch(console.warn);
+    }
   },
 
   sendAudio(_: ArrayBuffer): void {},

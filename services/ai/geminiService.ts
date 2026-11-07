@@ -3,11 +3,130 @@ import { AIResponse, Message } from '../../types';
 import { CONFIG, AI_CONFIG } from '../../constants/config';
 import { SUPPORTIVE_RESPONSES } from '../../constants/mockData';
 import { safetyService } from './safetyService';
-import { SYSTEM_PROMPT, SENTIMENT_ANALYSIS_PROMPT } from './prompts';
+import { SYSTEM_PROMPT, SENTIMENT_ANALYSIS_PROMPT, buildContextualPrompt } from './prompts';
 import { memoryService } from './memoryService';
 import { openRouterService, cleanModelResponse } from './openRouterService';
+import { useAppStore } from '../../store/useAppStore';
+import { supabase } from '../supabaseClient';
 
 export const geminiService = {
+  /**
+   * Retrieves user's latest uploaded medical record PDF from the private Supabase 'medical_records' bucket.
+   * Uploads to Gemini File API or constructs file data part for contextual empathy.
+   * ZERO DIAGNOSTIC DIRECTIVE: Never parses client-side; strictly non-diagnostic.
+   */
+  async getMedicalRecordContext(): Promise<{ filePart?: any; summary?: string } | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: files, error } = await supabase.storage
+        .from('medical_records')
+        .list(user.id, {
+          limit: 1,
+          sortBy: { column: 'created_at', order: 'desc' },
+        });
+
+      if (error || !files || files.length === 0) return null;
+
+      const latestFile = files[0];
+      const filePath = `${user.id}/${latestFile.name}`;
+
+      const { data: signedData, error: signError } = await supabase.storage
+        .from('medical_records')
+        .createSignedUrl(filePath, 3600);
+
+      if (signError || !signedData?.signedUrl) return null;
+
+      if (CONFIG.geminiApiKey) {
+        try {
+          const fileResp = await fetch(signedData.signedUrl);
+          const blob = await fileResp.blob();
+
+          // 1. Try Gemini File API resumable upload
+          try {
+            const startUpload = await fetch(
+              `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${CONFIG.geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'X-Goog-Upload-Protocol': 'resumable',
+                  'X-Goog-Upload-Command': 'start',
+                  'X-Goog-Upload-Header-Content-Length': `${blob.size}`,
+                  'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file: { display_name: latestFile.name } }),
+              }
+            );
+
+            const uploadUrl = startUpload.headers.get('x-goog-upload-url');
+            if (uploadUrl) {
+              const uploadFinalize = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Length': `${blob.size}`,
+                  'X-Goog-Upload-Offset': '0',
+                  'X-Goog-Upload-Command': 'upload, finalize',
+                },
+                body: blob,
+              });
+
+              if (uploadFinalize.ok) {
+                const fileInfo = await uploadFinalize.json();
+                if (fileInfo?.file?.uri) {
+                  return {
+                    filePart: {
+                      file_data: {
+                        mime_type: 'application/pdf',
+                        file_uri: fileInfo.file.uri,
+                      },
+                    },
+                    summary: `User has an archived medical record (${latestFile.name}) attached for empathetic background context.`,
+                  };
+                }
+              }
+            }
+          } catch (fileApiErr) {
+            console.warn('Gemini File API upload attempt failed, falling back to inline_data:', fileApiErr);
+          }
+
+          // Fallback: convert to base64 inline_data
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const res = (reader.result as string) || '';
+              resolve(res.includes(',') ? res.split(',')[1] : res);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          if (base64Data) {
+            return {
+              filePart: {
+                inline_data: {
+                  mime_type: 'application/pdf',
+                  data: base64Data,
+                },
+              },
+              summary: `User has an archived medical record (${latestFile.name}) attached for empathetic background context.`,
+            };
+          }
+        } catch (fetchErr) {
+          console.warn('Could not read PDF bytes from signed URL:', fetchErr);
+        }
+      }
+
+      return {
+        summary: `User has an archived medical record on file (${latestFile.name}).`,
+      };
+    } catch (e) {
+      console.warn('Failed to resolve medical records context:', e);
+      return null;
+    }
+  },
+
   async sendTextMessage(
     text: string,
     conversationId: string,
@@ -58,8 +177,16 @@ export const geminiService = {
     }
 
     const safetyLevel = safetyService.getSafetyLevel(trimmedText);
+    const store = useAppStore.getState();
+    const phq4Score = store.phq4Score;
     const memoryProfile = await memoryService.getMemoryProfile();
-    const contextualPrompt = memoryProfile ? `${SYSTEM_PROMPT}\n\nUser Context:\n${memoryProfile}` : SYSTEM_PROMPT;
+    const medicalRecord = await this.getMedicalRecordContext();
+
+    const contextualPrompt = buildContextualPrompt(SYSTEM_PROMPT, {
+      phq4Score,
+      memoryProfile,
+      medicalContext: medicalRecord?.summary,
+    });
 
     // If Demo Mode is enabled, simulate network call and emotional responses
     if (CONFIG.isDemoMode) {
@@ -132,7 +259,10 @@ export const geminiService = {
               })),
               {
                 role: 'user',
-                parts: [{ text }]
+                parts: [
+                  ...(medicalRecord?.filePart && history.length === 0 ? [medicalRecord.filePart] : []),
+                  { text }
+                ]
               }
             ],
             systemInstruction: {
@@ -191,8 +321,15 @@ export const geminiService = {
     conversationId: string,
     userTranscript?: string
   ): Promise<AIResponse> {
+    const store = useAppStore.getState();
+    const phq4Score = store.phq4Score;
     const memoryProfile = await memoryService.getMemoryProfile();
-    const contextualPrompt = memoryProfile ? `${SYSTEM_PROMPT}\n\nUser Context:\n${memoryProfile}` : SYSTEM_PROMPT;
+    const medicalRecord = await this.getMedicalRecordContext();
+    const contextualPrompt = buildContextualPrompt(SYSTEM_PROMPT, {
+      phq4Score,
+      memoryProfile,
+      medicalContext: medicalRecord?.summary,
+    });
     const cleanTranscript = (userTranscript || '').trim();
 
     // ponytail: Multimodal Gemini audio direct analysis first with OpenRouter speech transcript fallback ensures zero canned response loops.

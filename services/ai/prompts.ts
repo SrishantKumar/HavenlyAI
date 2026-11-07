@@ -1,3 +1,32 @@
+// ─── Dynamic Prompt Injection Helper ─────────────────────────────────────────
+export function buildContextualPrompt(
+  basePrompt: string,
+  options?: {
+    phq4Score?: number | null;
+    memoryProfile?: string;
+    medicalContext?: string;
+  }
+): string {
+  let prompt = basePrompt;
+
+  // 1. Psychometric Baseline (PHQ-4) distress adaptation
+  if (options?.phq4Score !== undefined && options?.phq4Score !== null && options.phq4Score > 8) {
+    prompt += `\n\n════════════════════════════════════════════\nCLINICAL GROUNDING DIRECTIVE (BASELINE DISTRESS)\n════════════════════════════════════════════\nUser's baseline assessment indicates high distress. Prioritize somatic grounding (breathing exercises) over analytical problem-solving during this session.`;
+  }
+
+  // 2. Medical Records / Psychological History non-diagnostic guardrail
+  if (options?.medicalContext && options.medicalContext.trim()) {
+    prompt += `\n\n════════════════════════════════════════════\nBACKGROUND MEDICAL & PSYCHOLOGICAL CONTEXT\n════════════════════════════════════════════\nSTRICT GUARDRAIL: The following is context from the user's prior psychological or medical records. You are a supportive companion, NOT a diagnostic clinician. You MUST NEVER reference this context to diagnose, label, question, or confirm any medical or mental illness. Use it exclusively to inform your empathetic understanding, emotional sensitivity, and awareness of their background trauma:\n${options.medicalContext.trim()}`;
+  }
+
+  // 3. User Memory Context
+  if (options?.memoryProfile && options.memoryProfile.trim()) {
+    prompt += `\n\nUser Context:\n${options.memoryProfile.trim()}`;
+  }
+
+  return prompt;
+}
+
 // ─── Master system prompt — all AI surfaces use this ────────────────────────
 export const SYSTEM_PROMPT = `
 You are Haven, the AI companion inside HavenlyAI — a private, safe mental-wellness app.

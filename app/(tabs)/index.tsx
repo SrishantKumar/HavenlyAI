@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MessageSquare, Mic, Phone, ChevronRight } from 'lucide-react-native';
+import { MessageSquare, Mic, Phone, ChevronRight, Compass, CheckCircle2, Sparkles } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -10,6 +12,9 @@ const IconMessageSquare = MessageSquare as any;
 const IconMic = Mic as any;
 const IconPhone = Phone as any;
 const IconChevronRight = ChevronRight as any;
+const IconCompass = Compass as any;
+const IconCheckCircle2 = CheckCircle2 as any;
+const IconSparkles = Sparkles as any;
 import { chatService } from '../../services/chat/chatService';
 import { getGreeting, formatFriendlyDate } from '../../utils/formatters';
 import HavenlyOrb from '../../components/havenly/HavenlyOrb';
@@ -21,12 +26,27 @@ import { EmotionType } from '../../types';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { theme, user, conversations, setConversations } = useAppStore();
+  const {
+    theme,
+    user,
+    conversations,
+    setConversations,
+    activeBehavioralTask,
+    incrementBehavioralTasksCompleted,
+    behavioralTasksCompleted,
+  } = useAppStore();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
 
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionType | null>(null);
   const [mascotMessage, setMascotMessage] = useState<string | null>(null);
   const msgOpacity = useRef(new Animated.Value(0)).current;
+
+  const handleCompleteTask = async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_) {}
+    await incrementBehavioralTasksCompleted();
+  };
 
   const mascotGreetings = [
     '\u2728 Hey! I am Haven, your companion.',
@@ -116,6 +136,59 @@ export default function HomeScreen() {
           size="large"
           style={styles.mainCta}
         />
+
+        {/* Phase 3 & 5: Behavioral Activation & Somatic Rewards */}
+        <View style={[styles.taskCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.taskCardHeader}>
+            <View style={styles.taskTitleRow}>
+              <IconCompass color={colors.primary} size={18} />
+              <Text style={[styles.taskCardTitle, { color: colors.text }]}>
+                Behavioral Activation
+              </Text>
+            </View>
+            <View style={[styles.orbThemeBadge, { backgroundColor: colors.secondary }]}>
+              <IconSparkles color={colors.primary} size={12} style={{ marginRight: 4 }} />
+              <Text style={[styles.orbThemeBadgeText, { color: colors.primary }]}>
+                {behavioralTasksCompleted >= 6
+                  ? 'Deep Ocean Orb'
+                  : behavioralTasksCompleted >= 3
+                  ? 'Aurora Orb'
+                  : 'Violet Orb'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.taskPromptText, { color: colors.text }]}>
+            {activeBehavioralTask?.task || 'Take a 10-minute walk outside without headphones.'}
+          </Text>
+
+          <Text style={[styles.taskRationaleText, { color: colors.textMuted }]}>
+            {activeBehavioralTask?.rationale || 'Engages sensory awareness and breaks cyclical rumination patterns.'}
+          </Text>
+
+          <View style={styles.taskFooterRow}>
+            {activeBehavioralTask?.isCompleted ? (
+              <View style={[styles.completedBadge, { backgroundColor: colors.surface, borderColor: colors.success }]}>
+                <IconCheckCircle2 color={colors.success} size={16} style={{ marginRight: 6 }} />
+                <Text style={[styles.completedBadgeText, { color: colors.success }]}>
+                  Completed \u2022 Somatic Reward Unlocked
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleCompleteTask}
+                style={[styles.completeTaskBtn, { backgroundColor: colors.primary }]}
+              >
+                <IconCheckCircle2 color="#FFFFFF" size={16} style={{ marginRight: 6 }} />
+                <Text style={styles.completeTaskBtnText}>Mark Complete</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={[styles.taskCounterText, { color: colors.textMuted }]}>
+              {behavioralTasksCompleted} {behavioralTasksCompleted === 1 ? 'step' : 'steps'} done
+            </Text>
+          </View>
+        </View>
 
         {/* Emotion Selector Pills */}
         <EmotionSelector 
@@ -290,5 +363,87 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     fontSize: 11,
     marginTop: 2,
+  },
+  taskCard: {
+    borderWidth: 1,
+    borderRadius: LAYOUT.borderRadius.large,
+    padding: LAYOUT.spacing.md,
+    marginTop: LAYOUT.spacing.md,
+    marginBottom: LAYOUT.spacing.xs,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  taskCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  taskCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  orbThemeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  orbThemeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  taskPromptText: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 21,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  taskRationaleText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  taskFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  completeTaskBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  completeTaskBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  completedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  taskCounterText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

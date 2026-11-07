@@ -8,13 +8,91 @@ import {
 } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Defs, RadialGradient, Stop, LinearGradient } from 'react-native-svg';
 import { useAppStore } from '../../store/useAppStore';
-import { OrbState } from '../../types';
+import { OrbState, OrbThemeId } from '../../types';
 
 interface HavenlyOrbProps {
   size?: number;
   state?: OrbState;
+  themeId?: OrbThemeId;
   onPress?: () => void;
 }
+
+interface ThemeConfig {
+  breathDuration: number;
+  bodyGrad: {
+    stop0: string;
+    stop30: string;
+    stop70: string;
+    stop100: string;
+  };
+  edgeGlow: string;
+  plasma: {
+    start: string;
+    mid: string;
+    end: string;
+  };
+  ring: {
+    start: string;
+    mid: string;
+    end: string;
+  };
+  shadow: string;
+}
+
+const THEME_CONFIGS: Record<OrbThemeId, ThemeConfig> = {
+  default: {
+    breathDuration: 1800, // 3600ms total
+    bodyGrad: {
+      stop0: '#C084FC',
+      stop30: '#818CF8',
+      stop70: '#4338CA',
+      stop100: '#1E1B4B',
+    },
+    edgeGlow: '#A78BFA',
+    plasma: { start: '#38BDF8', mid: '#A78BFA', end: '#F472B6' },
+    ring: { start: '#38BDF8', mid: '#A78BFA', end: '#C084FC' },
+    shadow: '#6D28D9',
+  },
+  aurora: {
+    breathDuration: 2250, // 4500ms slower gentle rhythm
+    bodyGrad: {
+      stop0: '#5EEAD4',
+      stop30: '#2DD4BF',
+      stop70: '#0F766E',
+      stop100: '#042F2E',
+    },
+    edgeGlow: '#2DD4BF',
+    plasma: { start: '#99F6E4', mid: '#2DD4BF', end: '#10B981' },
+    ring: { start: '#5EEAD4', mid: '#2DD4BF', end: '#14B8A6' },
+    shadow: '#0F766E',
+  },
+  deep_ocean: {
+    breathDuration: 2750, // 5500ms ultra-slow box-breathing rhythm
+    bodyGrad: {
+      stop0: '#38BDF8',
+      stop30: '#0284C7',
+      stop70: '#075985',
+      stop100: '#082F49',
+    },
+    edgeGlow: '#38BDF8',
+    plasma: { start: '#7DD3FC', mid: '#0284C7', end: '#1E3A8A' },
+    ring: { start: '#38BDF8', mid: '#0284C7', end: '#0369A1' },
+    shadow: '#075985',
+  },
+  ember: {
+    breathDuration: 2000, // 4000ms warming rhythm
+    bodyGrad: {
+      stop0: '#FDBA74',
+      stop30: '#FB923C',
+      stop70: '#C2410C',
+      stop100: '#431407',
+    },
+    edgeGlow: '#FB923C',
+    plasma: { start: '#FED7AA', mid: '#F97316', end: '#E11D48' },
+    ring: { start: '#FDBA74', mid: '#FB923C', end: '#EA580C' },
+    shadow: '#9A3412',
+  },
+};
 
 // Floating bubble data (fixed positions relative to mascot center)
 const BUBBLES = [
@@ -26,9 +104,29 @@ const BUBBLES = [
   { dx: 55,  dy: -80, r: 6,  delay: 1000 },
 ];
 
-export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propState, onPress }) => {
+export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({
+  size = 140,
+  state: propState,
+  themeId: propThemeId,
+  onPress,
+}) => {
   const storeOrbState = useAppStore((s) => s.orbState);
+  const behavioralTasksCompleted = useAppStore((s) => s.behavioralTasksCompleted || 0);
   const orbState = propState || storeOrbState;
+
+  // Somatic Reward Unlock Logic (Phase 5):
+  // 0-2 tasks: 'default' (Indigo/Violet)
+  // 3-5 tasks: 'aurora' (Teal/Green, slower breath rhythm)
+  // 6+ tasks: 'deep_ocean' (Deep Blue, ultra-slow box-breathing rhythm)
+  const activeThemeId: OrbThemeId =
+    propThemeId ||
+    (behavioralTasksCompleted >= 6
+      ? 'deep_ocean'
+      : behavioralTasksCompleted >= 3
+      ? 'aurora'
+      : 'default');
+
+  const themeConfig = THEME_CONFIGS[activeThemeId] || THEME_CONFIGS.default;
 
   // ── Core animations ──────────────────────────────────────────────────────
   const floatAnim   = useRef(new Animated.Value(0)).current;
@@ -77,11 +175,11 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
     };
     scheduleBlink();
 
-    // Breathing (idle/listening)
+    // Breathing (idle/listening) with somatic theme breath rhythm
     if (orbState === 'idle' || orbState === 'listening') {
       anims.push(Animated.loop(Animated.sequence([
-        Animated.timing(breathAnim, { toValue: 1.06, duration: 2000, useNativeDriver: true }),
-        Animated.timing(breathAnim, { toValue: 0.96, duration: 2000, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 1.06, duration: themeConfig.breathDuration, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 0.96, duration: themeConfig.breathDuration, useNativeDriver: true }),
       ])));
     }
 
@@ -107,7 +205,7 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
 
     anims.forEach((a) => a.start());
     return () => { anims.forEach((a) => a.stop()); };
-  }, [orbState]);
+  }, [orbState, themeConfig.breathDuration]);
 
   // ── Tap: happy squish ─────────────────────────────────────────────────────
   const handlePress = useCallback(() => {
@@ -160,6 +258,7 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
               width: s * 0.75,
               bottom: s * 0.08,
               left: s - (s * 0.75) / 2,
+              backgroundColor: themeConfig.shadow,
               opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.35] }),
             },
           ]}
@@ -183,18 +282,18 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
         >
           <Svg width={s} height={s} viewBox="0 0 200 200">
             <Defs>
-              {/* Deep Space 3D Body Gradient */}
+              {/* Deep Space 3D Body Gradient (Dynamic Somatic Theme) */}
               <RadialGradient id="bodyGrad" cx="35%" cy="30%" r="75%">
-                <Stop offset="0%"   stopColor="#C084FC" stopOpacity="1" />
-                <Stop offset="30%"  stopColor="#818CF8" stopOpacity="0.9" />
-                <Stop offset="70%"  stopColor="#4338CA" stopOpacity="1" />
-                <Stop offset="100%" stopColor="#1E1B4B" stopOpacity="1" />
+                <Stop offset="0%"   stopColor={themeConfig.bodyGrad.stop0} stopOpacity="1" />
+                <Stop offset="30%"  stopColor={themeConfig.bodyGrad.stop30} stopOpacity="0.9" />
+                <Stop offset="70%"  stopColor={themeConfig.bodyGrad.stop70} stopOpacity="1" />
+                <Stop offset="100%" stopColor={themeConfig.bodyGrad.stop100} stopOpacity="1" />
               </RadialGradient>
               
               {/* Frosted Glass Edge / Inner Shadow */}
               <RadialGradient id="edgeGlow" cx="50%" cy="50%" r="50%">
                 <Stop offset="80%" stopColor="#FFFFFF" stopOpacity="0" />
-                <Stop offset="98%" stopColor="#A78BFA" stopOpacity="0.4" />
+                <Stop offset="98%" stopColor={themeConfig.edgeGlow} stopOpacity="0.4" />
                 <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.6" />
               </RadialGradient>
 
@@ -212,9 +311,9 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
 
               {/* Flowing plasma sash */}
               <LinearGradient id="plasmaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%"   stopColor="#38BDF8" stopOpacity="0.8" />
-                <Stop offset="50%"  stopColor="#A78BFA" stopOpacity="0.9" />
-                <Stop offset="100%" stopColor="#F472B6" stopOpacity="0.6" />
+                <Stop offset="0%"   stopColor={themeConfig.plasma.start} stopOpacity="0.8" />
+                <Stop offset="50%"  stopColor={themeConfig.plasma.mid} stopOpacity="0.9" />
+                <Stop offset="100%" stopColor={themeConfig.plasma.end} stopOpacity="0.6" />
               </LinearGradient>
 
               {/* Cheek blush */}
@@ -281,10 +380,10 @@ export const HavenlyOrb: React.FC<HavenlyOrbProps> = ({ size = 140, state: propS
           <Svg width="100%" height="100%" viewBox="0 0 290 90">
             <Defs>
               <LinearGradient id="ringG" x1="0%" y1="0%" x2="100%" y2="0%">
-                <Stop offset="0%"   stopColor="#38BDF8" stopOpacity="0.8" />
-                <Stop offset="30%"  stopColor="#A78BFA" stopOpacity="0.4" />
-                <Stop offset="70%"  stopColor="#C084FC" stopOpacity="0.4" />
-                <Stop offset="100%" stopColor="#38BDF8" stopOpacity="0.8" />
+                <Stop offset="0%"   stopColor={themeConfig.ring.start} stopOpacity="0.8" />
+                <Stop offset="30%"  stopColor={themeConfig.ring.mid} stopOpacity="0.4" />
+                <Stop offset="70%"  stopColor={themeConfig.ring.end} stopOpacity="0.4" />
+                <Stop offset="100%" stopColor={themeConfig.ring.start} stopOpacity="0.8" />
               </LinearGradient>
             </Defs>
             <Ellipse cx="145" cy="45" rx="140" ry="38"

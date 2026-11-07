@@ -21,6 +21,7 @@ export const chatService = {
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
+        .eq('is_archived', false)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -33,6 +34,7 @@ export const chatService = {
         updatedAt: c.updated_at || c.updatedAt,
         type: c.type,
         lastMessageText: c.last_message_text || c.lastMessageText || '',
+        isArchived: !!c.is_archived,
       }));
     } catch (e) {
       console.warn('Supabase DB getConversations failed, falling back to mock memory data:', e);
@@ -238,32 +240,38 @@ export const chatService = {
   },
 
   /**
-   * Deletes a conversation
+   * Soft-archives a conversation (replaces hard DELETE to preserve longitudinal context)
    */
-  async deleteConversation(conversationId: string): Promise<void> {
+  async archiveConversation(conversationId: string): Promise<void> {
     if (CONFIG.isDemoMode) {
       const index = MOCK_CONVERSATIONS.findIndex(c => c.id === conversationId);
       if (index !== -1) {
         MOCK_CONVERSATIONS.splice(index, 1);
       }
-      delete MOCK_MESSAGES[conversationId];
       return;
     }
 
     try {
+      // Soft deletion: update is_archived = true instead of DELETE statement
       const { error } = await supabase
         .from('conversations')
-        .delete()
+        .update({ is_archived: true, updated_at: new Date().toISOString() })
         .eq('id', conversationId);
 
       if (error) throw error;
     } catch (e) {
-      console.warn('Supabase DB deleteConversation failed, deleting locally:', e);
+      console.warn('Supabase DB archiveConversation failed, archiving locally:', e);
       const index = MOCK_CONVERSATIONS.findIndex(c => c.id === conversationId);
       if (index !== -1) {
         MOCK_CONVERSATIONS.splice(index, 1);
       }
-      delete MOCK_MESSAGES[conversationId];
     }
+  },
+
+  /**
+   * Deletes a conversation by soft-archiving it (Directive: ZERO Hard Deletes)
+   */
+  async deleteConversation(conversationId: string): Promise<void> {
+    return this.archiveConversation(conversationId);
   },
 };
