@@ -119,15 +119,28 @@ export function convertPcmBase64ToWav(
 }
 
 /**
- * Converts raw PCM base64 string(s) to a valid WAV audio file on the device filesystem
- * (or a Blob URL on web) and returns the playable URI.
+ * Converts raw PCM chunks (as Uint8Array[] or Base64 string[]) into a single,
+ * valid WAV audio file on the device filesystem (or a Blob URL on web) and returns
+ * the playable URI.
  */
 export async function savePcmAsWavFile(
-  base64DataOrArray: string | string[],
+  input: string | string[] | Uint8Array | Uint8Array[],
   sampleRate: number = 24000
 ): Promise<string> {
-  const base64List = Array.isArray(base64DataOrArray) ? base64DataOrArray : [base64DataOrArray];
-  const pcmArrays = base64List.map((b64) => base64ToUint8Array(b64));
+  let pcmArrays: Uint8Array[];
+  if (Array.isArray(input)) {
+    if (input.length === 0) return '';
+    if (typeof input[0] === 'string') {
+      pcmArrays = (input as string[]).map((b64) => base64ToUint8Array(b64));
+    } else {
+      pcmArrays = input as Uint8Array[];
+    }
+  } else if (typeof input === 'string') {
+    pcmArrays = [base64ToUint8Array(input)];
+  } else {
+    pcmArrays = [input as Uint8Array];
+  }
+
   const { wavBytes, wavBase64 } = pcmChunksToWav(pcmArrays, sampleRate);
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
