@@ -100,7 +100,7 @@ export const geminiLiveService = {
     this.callbacks.onStateChanged?.('connecting');
     await new Promise(resolve => setTimeout(resolve, 400));
     this.callbacks.onStateChanged?.('connected');
-    console.log('Gemini Live: Connection initialized with hardcoded Kore voice.');
+    console.log('Gemini Live: Connection initialized with hardcoded Aoede voice.');
 
     if (CONFIG.geminiApiKey) {
       this.connectLiveWebSocket();
@@ -120,7 +120,7 @@ export const geminiLiveService = {
     }
 
     liveWs.onopen = () => {
-      console.log('Gemini Live WS: Connected. Sending setup with hardcoded Kore voice...');
+      console.log('Gemini Live WS: Connected. Sending setup with hardcoded Aoede voice...');
       liveWs!.send(JSON.stringify({
         setup: {
           model: 'models/gemini-2.0-flash-exp',
@@ -129,7 +129,7 @@ export const geminiLiveService = {
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: 'Kore',
+                  voiceName: 'Aoede',
                 },
               },
             },
@@ -525,7 +525,7 @@ export const geminiLiveService = {
   },
 
   speakTextResponse(text: string): void {
-    // 1. Primary Engine: Real Google Gemini Kore studio neural voice
+    // 1. Primary Engine: Real Google Gemini Aoede studio neural voice
     this.fetchGeminiSpeechAudio(text)
       .then((pcmBase64) => {
         if (pcmBase64) {
@@ -551,10 +551,10 @@ export const geminiLiveService = {
           }
           return;
         }
-        throw new Error('Gemini Kore voice unavailable');
+        throw new Error('Gemini Aoede voice unavailable');
       })
       .catch(() => {
-        // 2. Secondary Engine: Vercel Edge TTS with hardcoded AriaNeural
+        // 2. Secondary Engine: Vercel Edge TTS with hardcoded JennyNeural
         edgeTtsService
           .generateAndDownloadSpeech(text)
           .then(async (speechUri) => {
@@ -633,7 +633,7 @@ export const geminiLiveService = {
         try {
           Speech.speak(text, {
             voice: voiceId,
-            rate: 0.95, // Calibrated natural pacing
+            rate: 0.90, // Softened natural conversational pacing
             pitch: 1.0, // Natural human female pitch
             onComplete: done,
             onError: done,
@@ -660,7 +660,7 @@ export const geminiLiveService = {
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: 'Kore' }
+                prebuiltVoiceConfig: { voiceName: 'Aoede' }
               }
             }
           }
@@ -769,7 +769,7 @@ export const geminiLiveService = {
     }
 
     // Natural empathetic vocal pacing (calm, warm, unhurried)
-    utt.rate = 0.95;
+    utt.rate = 0.90;
     utt.pitch = 1.0;
 
     let finished = false;

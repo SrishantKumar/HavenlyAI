@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { CONFIG } from '../../constants/config';
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-const HARDCODED_EDGE_VOICE = 'en-US-AriaNeural';
+const HARDCODED_EDGE_VOICE = 'en-US-JennyNeural';
 
 /**
  * Pure TypeScript helper to convert an ArrayBuffer to a base64 string
@@ -31,7 +31,7 @@ export const edgeTtsService = {
    * audio buffer to the local cache directory, and returns the local file URI.
    *
    * @param text The conversational reply to speak.
-   * @param voice Optional voice identifier (defaults to calming "en-US-AriaNeural").
+   * @param voice Optional voice identifier (defaults to lifelike conversational "en-US-JennyNeural").
    * @returns Local file URI (e.g. file:///.../temp_speech.mp3) or null on failure.
    */
   async generateAndDownloadSpeech(

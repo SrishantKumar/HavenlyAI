@@ -232,7 +232,7 @@ export const playbackService = {
             Speech.speak(text, {
               voice: selectedVoiceId,
               pitch: 1.0,
-              rate: 0.95,
+              rate: 0.90, // Softened natural conversational pacing
               onStart: () => {
                 if (onPlaybackStatusUpdateCallback) {
                   onPlaybackStatusUpdateCallback({
@@ -282,7 +282,7 @@ export const playbackService = {
           activeUtterance = utterance;
 
           utterance.pitch = 1.0;
-          utterance.rate = 0.95;
+          utterance.rate = 0.90;
           utterance.volume = 1.0;
 
           const voices = window.speechSynthesis.getVoices();

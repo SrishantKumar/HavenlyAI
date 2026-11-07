@@ -19,7 +19,7 @@ export const DEFAULT_PREMIUM_FEMALE_TTS =
     ? 'com.apple.voice.compact.en-US.Samantha'
     : Platform.OS === 'android'
     ? 'en-us-x-sfg#female_1-local'
-    : 'en-US-AriaNeural';
+    : 'en-US-JennyNeural';
 
 const ONBOARDING_STORAGE_KEY = 'havenly_onboarding_completed';
 const THEME_STORAGE_KEY = 'havenly_theme_preference';
@@ -143,7 +143,7 @@ export const useAppStore = create<AppState>((set, get) => {
       theme: 'system',
       voice: {
         selectedVoice: DEFAULT_PREMIUM_FEMALE_TTS,
-        selectedLiveVoice: 'Kore',
+        selectedLiveVoice: 'Aoede',
         autoplay: true,
         playbackSpeed: 1.0,
       },
@@ -321,9 +321,9 @@ export const useAppStore = create<AppState>((set, get) => {
       if (savedSettingsStr) {
         try {
           parsedSettings = JSON.parse(savedSettingsStr);
-          // Strictly enforce premium female Kore / Aria across all stored profiles
+          // Strictly enforce premium female Aoede / JennyNeural across all stored profiles
           if (parsedSettings && typeof parsedSettings === 'object' && parsedSettings.voice) {
-            parsedSettings.voice.selectedLiveVoice = 'Kore';
+            parsedSettings.voice.selectedLiveVoice = 'Aoede';
             parsedSettings.voice.selectedVoice = DEFAULT_PREMIUM_FEMALE_TTS;
           }
         } catch (e) {
