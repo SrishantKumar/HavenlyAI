@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Web Request: Redis Cache Miss Flow",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "animation": "trace",
+    "viewBox": [1080, 540],
+    "views": [
+      {
+        "id": "request-and-lookup",
+        "label": "Request & Cache Check",
+        "focus": ["browser", "api", "redis"],
+        "note": "Client sends HTTP request and API inspects Redis key cache."
+      },
+      {
+        "id": "miss-and-query",
+        "label": "PostgreSQL Query Fallback",
+        "focus": ["api", "redis", "postgres"],
+        "note": "Cache miss triggers indexed SQL lookup on PostgreSQL."
+      },
+      {
+        "id": "fill-and-reply",
+        "label": "Cache Fill & Client Response",
+        "focus": ["api", "redis", "browser"],
+        "note": "API backfills Redis cache with TTL and delivers JSON response."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Browser",
+      "sublabel": "Client App",
+      "brand": "react"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API Gateway",
+      "sublabel": "HTTP Server"
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis",
+      "sublabel": "In-Memory Cache",
+      "brand": "redis"
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Source of Truth",
+      "brand": "postgresql"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 250,
+      "label": "Cache Lookup"
+    },
+    {
+      "from": 260,
+      "to": 350,
+      "label": "PostgreSQL Query"
+    },
+    {
+      "from": 360,
+      "to": 450,
+      "label": "Cache Fill & Response"
+    }
+  ],
+  "messages": [
+    {
+      "id": "http-request",
+      "from": "browser",
+      "to": "api",
+      "y": 170,
+      "label": "GET /api/v1/resource",
+      "variant": "emphasis"
+    },
+    {
+      "id": "redis-get",
+      "from": "api",
+      "to": "redis",
+      "y": 205,
+      "label": "GET cache_key",
+      "variant": "default"
+    },
+    {
+      "id": "redis-miss",
+      "from": "redis",
+      "to": "api",
+      "y": 235,
+      "label": "(nil) cache miss",
+      "variant": "return"
+    },
+    {
+      "id": "pg-query",
+      "from": "api",
+      "to": "postgres",
+      "y": 275,
+      "label": "SELECT * FROM resource WHERE id = ?",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pg-rows",
+      "from": "postgres",
+      "to": "api",
+      "y": 315,
+      "label": "record tuple (1 row)",
+      "variant": "return"
+    },
+    {
+      "id": "redis-set",
+      "from": "api",
+      "to": "redis",
+      "y": 365,
+      "label": "SETEX cache_key 3600 data",
+      "variant": "dashed"
+    },
+    {
+      "id": "redis-ok",
+      "from": "redis",
+      "to": "api",
+      "y": 395,
+      "label": "OK",
+      "variant": "return"
+    },
+    {
+      "id": "http-response",
+      "from": "api",
+      "to": "browser",
+      "y": 425,
+      "label": "200 OK (application/json)",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "browser",
+      "from": 165,
+      "to": 430,
+      "type": "frontend"
+    },
+    {
+      "participant": "api",
+      "from": 170,
+      "to": 425,
+      "type": "backend"
+    },
+    {
+      "participant": "redis",
+      "from": 200,
+      "to": 240,
+      "type": "database"
+    },
+    {
+      "participant": "postgres",
+      "from": 270,
+      "to": 320,
+      "type": "database"
+    },
+    {
+      "participant": "redis",
+      "from": 360,
+      "to": 400,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Cache-Aside Read Pattern",
+      "items": [
+        "The application actively manages cache reads, misses, and population",
+        "Only cache misses incur database disk I/O and query latency"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Fallback to Source of Truth",
+      "items": [
+        "Cache miss immediately triggers indexed SQL query against PostgreSQL",
+        "PostgreSQL returns authoritative row data with minimal connection pool overhead"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Cache Population & Response",
+      "items": [
+        "API backfills Redis cache with explicit TTL to avoid stale memory",
+        "Client receives response immediately with fresh JSON payload"
+      ]
+    }
+  ]
+}

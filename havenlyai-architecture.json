@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "HavenlyAI Runtime Architecture",
+    "quality_profile": "showcase",
+    "viewBox": [1160, 440],
+    "views": [
+      {
+        "id": "voice-primary",
+        "label": "Voice-native live stream",
+        "focus": ["user", "client_ui", "audio_vad", "live_ws", "gemini_live"],
+        "note": "Follow real-time full-duplex voice capture from user microphone to Gemini Live API."
+      },
+      {
+        "id": "safety-and-fallback",
+        "label": "Safety and AI fallback",
+        "focus": ["state_store", "safety_guard", "rest_gateway", "openrouter_hub"],
+        "note": "Inspect client-side deterministic safety guardrails and multi-provider REST fallback."
+      },
+      {
+        "id": "persistence-and-auth",
+        "label": "Persistence and identity",
+        "focus": ["client_ui", "audio_vad", "supa_auth", "supa_db"],
+        "note": "Examine JWT session security and PostgreSQL reflection persistence with Row-Level Security."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "End User",
+      "sublabel": "voice & somatic cues",
+      "pos": [40, 210],
+      "size": [120, 54]
+    },
+    {
+      "id": "client_ui",
+      "type": "frontend",
+      "label": "Havenly Client UI",
+      "sublabel": "Expo Router & Orb",
+      "brand": "react",
+      "pos": [230, 210],
+      "size": [130, 54],
+      "tag": "mobile / web"
+    },
+    {
+      "id": "audio_vad",
+      "type": "frontend",
+      "label": "Audio & VAD Engine",
+      "sublabel": "PCM capture & barge-in",
+      "pos": [460, 210],
+      "size": [140, 54],
+      "tag": "client DSP"
+    },
+    {
+      "id": "live_ws",
+      "type": "messagebus",
+      "label": "Live WebSocket",
+      "sublabel": "BidiGenerateContent",
+      "pos": [690, 210],
+      "size": [140, 54],
+      "tag": "full-duplex"
+    },
+    {
+      "id": "gemini_live",
+      "type": "cloud",
+      "label": "Google Gemini 2.0",
+      "sublabel": "Multimodal Live API",
+      "brand": "google-gemini",
+      "pos": [930, 210],
+      "size": [140, 54],
+      "tag": "voice model"
+    },
+    {
+      "id": "supa_auth",
+      "type": "security",
+      "label": "Supabase Auth",
+      "sublabel": "JWT & SecureStore",
+      "brand": "supabase",
+      "pos": [230, 80],
+      "size": [130, 54],
+      "tag": "identity"
+    },
+    {
+      "id": "supa_db",
+      "type": "database",
+      "label": "PostgreSQL DB",
+      "sublabel": "Supabase RLS tables",
+      "brand": "postgresql",
+      "pos": [460, 80],
+      "size": [140, 54],
+      "tag": "durable state"
+    },
+    {
+      "id": "state_store",
+      "type": "frontend",
+      "label": "Zustand State Store",
+      "sublabel": "session & memory FSM",
+      "pos": [230, 340],
+      "size": [130, 54],
+      "tag": "local state"
+    },
+    {
+      "id": "safety_guard",
+      "type": "security",
+      "label": "Crisis Triage Shield",
+      "sublabel": "rule engine & hotlines",
+      "pos": [460, 340],
+      "size": [140, 54],
+      "tag": "fail-closed"
+    },
+    {
+      "id": "rest_gateway",
+      "type": "backend",
+      "label": "AI Gateway",
+      "sublabel": "HTTPS multi-provider",
+      "pos": [690, 340],
+      "size": [140, 54],
+      "tag": "text & sync"
+    },
+    {
+      "id": "openrouter_hub",
+      "type": "cloud",
+      "label": "OpenRouter Hub",
+      "sublabel": "Gemma/Qwen free tier",
+      "pos": [930, 340],
+      "size": [140, 54],
+      "tag": "fallback LLMs"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client Boundary",
+      "wraps": ["client_ui", "audio_vad", "state_store", "safety_guard"],
+      "pad": 14
+    },
+    {
+      "kind": "region",
+      "label": "Supabase Cloud",
+      "wraps": ["supa_auth", "supa_db"],
+      "pad": 14
+    },
+    {
+      "kind": "region",
+      "label": "Cloud AI Tier",
+      "wraps": ["gemini_live", "openrouter_hub"],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-to-client",
+      "from": "user",
+      "to": "client_ui",
+      "label": "voice / touch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "client-to-audio",
+      "from": "client_ui",
+      "to": "audio_vad",
+      "label": "mic buffer",
+      "variant": "emphasis"
+    },
+    {
+      "id": "audio-to-ws",
+      "from": "audio_vad",
+      "to": "live_ws",
+      "label": "PCM stream",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ws-to-gemini",
+      "from": "live_ws",
+      "to": "gemini_live",
+      "label": "WebSocket",
+      "variant": "emphasis"
+    },
+    {
+      "id": "client-auth-sync",
+      "from": "client_ui",
+      "to": "supa_auth",
+      "label": "auth session",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -16
+    },
+    {
+      "id": "auth-to-db",
+      "from": "supa_auth",
+      "to": "supa_db",
+      "label": "token claims",
+      "variant": "security"
+    },
+    {
+      "id": "audio-to-db",
+      "from": "audio_vad",
+      "to": "supa_db",
+      "label": "persist voice",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -16
+    },
+    {
+      "id": "client-to-store",
+      "from": "client_ui",
+      "to": "state_store",
+      "label": "actions",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [295, 302]
+    },
+    {
+      "id": "audio-to-safety",
+      "from": "audio_vad",
+      "to": "safety_guard",
+      "label": "triage scan",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [530, 302]
+    },
+    {
+      "id": "store-to-safety",
+      "from": "state_store",
+      "to": "safety_guard",
+      "label": "context"
+    },
+    {
+      "id": "safety-to-gateway",
+      "from": "safety_guard",
+      "to": "rest_gateway",
+      "label": "filtered text",
+      "variant": "dashed"
+    },
+    {
+      "id": "gateway-to-openrouter",
+      "from": "rest_gateway",
+      "to": "openrouter_hub",
+      "label": "fallback",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Voice-Native Core Loop",
+      "items": [
+        "Primary path: 16/24kHz mono PCM streaming directly to Gemini Live",
+        "Client VAD triggers sub-second barge-in playback interruption",
+        "HavenlyOrb renders biofeedback pacing aligned with respiration"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Safety & Multi-Tier AI Fallback",
+      "items": [
+        "Deterministic regex and keyword heuristics scan user input locally",
+        "Crisis detection immediately opens direct-dial helpline triage",
+        "AI Gateway transparently falls back to OpenRouter free models"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Identity & Cloud Persistence",
+      "items": [
+        "Supabase Auth issues scoped JWTs stored in hardware Keystore",
+        "PostgreSQL enforces Row-Level Security on user reflections",
+        "In-memory mock store provides seamless offline fallback"
+      ]
+    }
+  ]
+}
