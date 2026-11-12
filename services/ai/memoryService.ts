@@ -194,7 +194,11 @@ Return ONLY a valid JSON object with NO markdown, NO code fences, and NO explana
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json',
+              thinkingConfig: { thinkingBudget: 0 },
+            },
           }),
         });
 

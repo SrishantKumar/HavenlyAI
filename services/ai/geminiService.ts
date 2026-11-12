@@ -244,75 +244,76 @@ export const geminiService = {
     // 2. Real Gemini API implementation
     try {
       if (CONFIG.geminiApiKey) {
-        // Direct integration with Google AI Studio
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.textModel}:generateContent?key=${CONFIG.geminiApiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              ...history.filter(msg => msg.role !== 'system').map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.content }]
-              })),
-              {
-                role: 'user',
-                parts: [
-                  ...(medicalRecord?.filePart && history.length === 0 ? [medicalRecord.filePart] : []),
-                  { text }
-                ]
-              }
-            ],
-            systemInstruction: {
-              parts: [{ text: contextualPrompt }]
-            }
-          })
-        });
+        // Direct integration with Google AI Studio across active candidate models
+        const candidateModels = [AI_CONFIG.textModel, ...(AI_CONFIG.fallbackModels || [])];
+        for (const model of candidateModels) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${CONFIG.geminiApiKey}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                contents: [
+                  ...history.filter(msg => msg.role !== 'system').map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: msg.content }]
+                  })),
+                  {
+                    role: 'user',
+                    parts: [
+                      ...(medicalRecord?.filePart && history.length === 0 ? [medicalRecord.filePart] : []),
+                      { text }
+                    ]
+                  }
+                ],
+                systemInstruction: {
+                  parts: [{ text: contextualPrompt }]
+                },
+                generationConfig: {
+                  maxOutputTokens: 350,
+                  temperature: 0.7,
+                  thinkingConfig: {
+                    thinkingBudget: 0,
+                  },
+                },
+              })
+            });
 
-        if (response.ok) {
-          const data = await response.json();
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const responseText = cleanModelResponse(rawText);
-          return {
-            text: responseText || "I'm right here with you. What's on your mind?",
-            safetyFlagged: safetyLevel !== 'none',
-            safetyLevel,
-          };
-        } else {
-          const errorMsg = await response.text();
-          console.error(`Direct Gemini API Error (Status ${response.status}):`, errorMsg);
-          throw new Error(`Direct Gemini API returned Status ${response.status}: ${errorMsg}`);
+            if (response.ok) {
+              const data = await response.json();
+              const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              const responseText = cleanModelResponse(rawText);
+              if (responseText && responseText.trim()) {
+                return {
+                  text: responseText.trim(),
+                  safetyFlagged: safetyLevel !== 'none',
+                  safetyLevel,
+                };
+              }
+            } else {
+              console.warn(`[Gemini API] Model ${model} returned HTTP ${response.status}`);
+            }
+          } catch (modelErr) {
+            console.warn(`[Gemini API] Request failed on ${model}:`, modelErr);
+          }
         }
       }
 
-      const response = await fetch(`${CONFIG.apiUrl}/chat/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          conversationId,
-          history: history.map(msg => ({ role: msg.role, content: msg.content })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await response.json();
+      // Safe fallback response if all upstream providers are unreachable
       return {
-        text: data.text,
-        audioUrl: data.audioUrl,
-        safetyFlagged: data.safetyFlagged || safetyLevel !== 'none',
-        safetyLevel: data.safetyLevel || safetyLevel,
+        text: "I'm right here with you. Take a slow, gentle breath. What feels like it's taking up the most space in your heart right now?",
+        safetyFlagged: safetyLevel !== 'none',
+        safetyLevel,
       };
     } catch (error) {
       console.error('Gemini Service text message error:', error);
-      throw error;
+      return {
+        text: "I'm right here with you. Take a slow breath. I am listening.",
+        safetyFlagged: safetyLevel !== 'none',
+        safetyLevel,
+      };
     }
   },
 
@@ -430,6 +431,13 @@ export const geminiService = {
               systemInstruction: {
                 parts: [{ text: contextualPrompt }],
               },
+              generationConfig: {
+                maxOutputTokens: 300,
+                temperature: 0.7,
+                thinkingConfig: {
+                  thinkingBudget: 0,
+                },
+              },
             }),
           });
 
@@ -487,6 +495,13 @@ export const geminiService = {
             body: JSON.stringify({
               contents: [{ parts: [{ text: `The user spoke this reflection: "${cleanTranscript}". Please respond warmly and supportively without using any emojis.` }] }],
               systemInstruction: { parts: [{ text: contextualPrompt }] },
+              generationConfig: {
+                maxOutputTokens: 300,
+                temperature: 0.7,
+                thinkingConfig: {
+                  thinkingBudget: 0,
+                },
+              },
             }),
           });
           if (textRes.ok) {
@@ -592,7 +607,11 @@ export const geminiService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: SENTIMENT_ANALYSIS_PROMPT + text }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 256 },
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 256,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       });
       if (!res.ok) return null;

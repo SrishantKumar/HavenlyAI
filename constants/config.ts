@@ -1,5 +1,6 @@
 export const AI_CONFIG = {
-  textModel: 'gemini-flash-latest',      // Fast, multimodal audio & text model (Gemini 3.8 Flash)
+  textModel: 'gemini-3.1-flash-lite-preview', // High-speed, high-availability Google AI Studio model (<3s latency)
+  fallbackModels: ['gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
   liveModel: 'gemini-2.0-flash-exp',     // Gemini Live WebSocket model with native Kore voice
   ttsModel: 'gemini-2.0-flash-exp',      // Studio-quality neural human Kore voice
 };

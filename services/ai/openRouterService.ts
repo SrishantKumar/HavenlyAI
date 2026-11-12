@@ -189,6 +189,11 @@ export const openRouterService = {
           }
         } else {
           console.warn(`[OpenRouter] Model ${model} returned HTTP ${response.status}`);
+          // If account daily rate limit (429) or invalid auth (401/403), fail immediately to Gemini fallback
+          if (response.status === 429 || response.status === 401 || response.status === 403) {
+            console.warn(`[OpenRouter] Rate limit or auth error (${response.status}), immediately dropping down to Gemini.`);
+            break;
+          }
         }
       } catch (err) {
         console.warn(`[OpenRouter] Failed request on ${model}:`, err);

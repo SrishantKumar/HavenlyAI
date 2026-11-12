@@ -166,6 +166,13 @@ export const questService = {
               systemInstruction: {
                 parts: [{ text: QUEST_SYSTEM_PROMPT }],
               },
+              generationConfig: {
+                maxOutputTokens: 200,
+                temperature: 0.7,
+                thinkingConfig: {
+                  thinkingBudget: 0,
+                },
+              },
             }),
           });
 
