@@ -20,7 +20,8 @@ export type OrbState =
   | 'listening'
   | 'thinking'
   | 'speaking'
-  | 'error';
+  | 'error'
+  | 'celebrate';
 
 export type SafetyLevel = 'none' | 'low' | 'moderate' | 'high';
 
@@ -140,3 +141,5 @@ export interface LiveKitSession {
 }
 
 export * from './supabase';
+export * from './quest';
+

@@ -15,7 +15,6 @@ import {
   Settings,
   LogOut,
   ChevronRight,
-  Mic,
   Eye,
   ShieldCheck,
   User,
@@ -24,21 +23,28 @@ import {
   CheckCircle2,
   Activity,
   Sparkles,
+  Flame,
+  Lock,
+  ShieldAlert,
 } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { COLORS, TYPOGRAPHY, LAYOUT } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
+import { useQuestStore, calculateLevel, xpForLevel, xpForNextLevel } from '../../store/useQuestStore';
+import { BADGES } from '../../constants/quests';
 import { authService } from '../../services/auth/authService';
 import { maskPhoneNumber } from '../../utils/formatters';
 import Header from '../../components/ui/Header';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import ProgressRing from '../../components/ui/ProgressRing';
 import { supabase } from '../../services/supabaseClient';
 import { generateUUID } from '../../utils/uuid';
 
 const IconSettings = Settings as any;
 const IconLogOut = LogOut as any;
 const IconChevronRight = ChevronRight as any;
-const IconMic = Mic as any;
 const IconEye = Eye as any;
 const IconShieldCheck = ShieldCheck as any;
 const IconUser = User as any;
@@ -47,11 +53,16 @@ const IconUploadCloud = UploadCloud as any;
 const IconCheckCircle2 = CheckCircle2 as any;
 const IconActivity = Activity as any;
 const IconSparkles = Sparkles as any;
+const IconFlame = Flame as any;
+const IconLock = Lock as any;
+const IconShieldAlert = ShieldAlert as any;
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { theme, user, phq4Score, behavioralTasksCompleted, resetAllData } = useAppStore();
+  const { theme, user, phq4Score, behavioralTasksCompleted, resetAllData, setShowSafetySupport } = useAppStore();
+  const { xp, level, streak, longestStreak, unlockedBadgeIds } = useQuestStore();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
+  const isDark = theme === 'dark';
 
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [medicalRecords, setMedicalRecords] = useState<string[]>([]);
@@ -174,11 +185,15 @@ export default function ProfileScreen() {
     }
   };
 
-  const getOrbThemeLabel = () => {
-    if (behavioralTasksCompleted >= 6) return 'Deep Ocean (Ultra-Slow Breathing)';
-    if (behavioralTasksCompleted >= 3) return 'Aurora (Teal Gentle Rhythm)';
-    return 'Default (Violet Calm)';
-  };
+  // Level & XP math
+  const currentLevel = level || 1;
+  const levelBase = xpForLevel(currentLevel);
+  const nextLevelBase = xpForNextLevel(currentLevel);
+  const xpSpan = Math.max(1, nextLevelBase - levelBase);
+  const xpInto = Math.max(0, xp - levelBase);
+  const levelProgressRatio = Math.min(1, xpInto / xpSpan);
+
+  const unlockedSet = new Set(unlockedBadgeIds || []);
 
   const menuItems = [
     {
@@ -200,11 +215,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <Header title="Your Haven" />
+      <Header title="Your Sanctuary" rightAction="safety" />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* User Card */}
-        <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Card style={styles.profileCard} variant="elevated">
           <View style={[styles.avatarBox, { backgroundColor: colors.secondary }]}>
             <IconUser color={colors.primary} size={36} />
           </View>
@@ -213,13 +228,144 @@ export default function ProfileScreen() {
           <Text style={[styles.phone, { color: colors.textMuted }]}>
             {maskPhoneNumber(user?.phoneNumber || '')}
           </Text>
-        </View>
+        </Card>
 
-        {/* Clinical Baseline & Somatic Rewards Card */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Level & XP Progress Card */}
+        <Card style={styles.levelCard} variant="elevated">
+          <View style={styles.levelCardHeader}>
+            <View style={styles.levelCardHeaderLeft}>
+              <ProgressRing
+                progress={levelProgressRatio}
+                size={54}
+                strokeWidth={4.5}
+                label={`L${currentLevel}`}
+              />
+              <View style={styles.levelMeta}>
+                <Text style={[styles.levelTitle, { color: colors.text }]}>Level {currentLevel}</Text>
+                <Text style={[styles.levelSubtext, { color: colors.textMuted }]}>
+                  {xpInto} / {xpSpan} XP to Level {currentLevel + 1}
+                </Text>
+              </View>
+            </View>
+            <Badge label={`${xp} Total XP`} variant="gold" />
+          </View>
+
+          {/* Progress Bar */}
+          <View style={[styles.progressBarTrack, { backgroundColor: colors.secondary }]}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${Math.round(levelProgressRatio * 100)}%`, backgroundColor: colors.primary },
+              ]}
+            />
+          </View>
+
+          <View style={styles.streakFooterRow}>
+            <View style={styles.streakFooterItem}>
+              <IconFlame color={colors.streak} size={16} style={{ marginRight: 4 }} />
+              <Text style={[styles.streakFooterText, { color: colors.text }]}>
+                {streak} Day Streak
+              </Text>
+            </View>
+            <Text style={[styles.longestStreakText, { color: colors.textMuted }]}>
+              Longest: {longestStreak} days
+            </Text>
+          </View>
+        </Card>
+
+        {/* Badges Grid (Locked badges greyed out) */}
+        <Card style={styles.badgesCard} variant="elevated">
+          <View style={styles.badgesHeaderRow}>
+            <View style={styles.badgesTitleRow}>
+              <IconSparkles color={colors.accent} size={18} style={{ marginRight: 6 }} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Badges & Milestones</Text>
+            </View>
+            <Badge
+              label={`${unlockedSet.size} / ${BADGES.length} Unlocked`}
+              variant="primary"
+            />
+          </View>
+
+          <View style={styles.badgesGrid}>
+            {BADGES.map((badge) => {
+              const isUnlocked = unlockedSet.has(badge.id);
+              return (
+                <View
+                  key={badge.id}
+                  style={[
+                    styles.badgeTile,
+                    {
+                      backgroundColor: isUnlocked
+                        ? isDark
+                          ? 'rgba(129, 140, 248, 0.12)'
+                          : 'rgba(99, 102, 241, 0.08)'
+                        : isDark
+                        ? 'rgba(39, 39, 42, 0.4)'
+                        : 'rgba(243, 244, 246, 0.7)',
+                      borderColor: isUnlocked
+                        ? colors.primary
+                        : isDark
+                        ? 'rgba(63, 63, 70, 0.4)'
+                        : 'rgba(229, 231, 235, 0.8)',
+                      opacity: isUnlocked ? 1 : 0.45,
+                    },
+                  ]}
+                >
+                  <View style={styles.badgeTileIconWrap}>
+                    <Text style={styles.badgeTileIcon}>{badge.icon}</Text>
+                    {!isUnlocked && (
+                      <View style={styles.lockOverlay}>
+                        <IconLock color={colors.textMuted} size={12} />
+                      </View>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.badgeTileName,
+                      { color: isUnlocked ? colors.text : colors.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {badge.name}
+                  </Text>
+                  <Text
+                    style={[styles.badgeTileDesc, { color: colors.textMuted }]}
+                    numberOfLines={2}
+                  >
+                    {badge.description}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* Safety Settings & Crisis Triage Access */}
+        <Card style={styles.safetyCard} variant="subtle">
+          <View style={styles.safetyHeader}>
+            <IconShieldAlert color={colors.error} size={20} style={{ marginRight: 8 }} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Crisis & Safety Controls</Text>
+          </View>
+          <Text style={[styles.safetyDesc, { color: colors.textMuted }]}>
+            Haven is an emotional companion, not a medical service. Immediate human support is always available 24/7.
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowSafetySupport(true)}
+            style={[styles.crisisBtn, { borderColor: colors.error }]}
+          >
+            <IconShieldAlert color={colors.error} size={16} style={{ marginRight: 6 }} />
+            <Text style={[styles.crisisBtnText, { color: colors.error }]}>
+              Open Emergency Support Resources
+            </Text>
+          </TouchableOpacity>
+        </Card>
+
+        {/* Clinical Baseline (PHQ-4) */}
+        <Card style={styles.sectionCard} variant="subtle">
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionHeaderLeft}>
-              <IconActivity color={colors.primary} size={20} />
+              <IconActivity color={colors.primary} size={18} />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Clinical Baseline (PHQ-4)</Text>
             </View>
             <TouchableOpacity
@@ -233,52 +379,30 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={[styles.baselineScoreText, { color: colors.text }]}>
-            {phq4Score !== null ? `Baseline Score: ${phq4Score} / 12` : 'Baseline not yet completed'}
+            {phq4Score !== null ? `Baseline Score: ${phq4Score} / 12` : 'Baseline not completed'}
           </Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-            {phq4Score !== null && phq4Score > 8
-              ? 'Distress level: High. Haven prioritizes somatic breathing grounding exercises.'
-              : 'Used solely to tune conversational pacing and emotional warmth.'}
+            Used to calibrate conversational pacing and emotional warmth.
           </Text>
+        </Card>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
+        {/* Medical / Therapy Records PDF Upload */}
+        <Card style={styles.sectionCard} variant="subtle">
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionHeaderLeft}>
-              <IconSparkles color={colors.accent} size={20} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Somatic Rewards</Text>
-            </View>
-            <View style={[styles.badgePill, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.badgePillText, { color: colors.primary }]}>
-                {behavioralTasksCompleted} Completed
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-            Active Orb Theme: {getOrbThemeLabel()}
-          </Text>
-        </View>
-
-        {/* Phase 2: Medical History PDF Upload (Contextual, Non-Diagnostic) */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.sectionHeaderLeft}>
-              <IconFileText color={colors.primary} size={20} />
+              <IconFileText color={colors.primary} size={18} />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical / Therapy Records</Text>
             </View>
           </View>
           <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-            Upload past psychological records or therapy summaries so Haven understands your background trauma.
+            Upload past therapy summaries so Haven understands your background trauma.
           </Text>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleUploadMedicalPdf}
             disabled={uploadingPdf}
-            style={[
-              styles.uploadBtn,
-              { backgroundColor: colors.surface, borderColor: colors.border, position: 'relative' },
-            ]}
+            style={[styles.uploadBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           >
             {Platform.OS === 'web' && (
               <input
@@ -304,10 +428,8 @@ export default function ProfileScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <>
-                <IconUploadCloud color={colors.primary} size={24} style={{ marginRight: 8 }} />
-                <Text style={[styles.uploadBtnText, { color: colors.text }]}>
-                  Upload History PDF
-                </Text>
+                <IconUploadCloud color={colors.primary} size={22} style={{ marginRight: 8 }} />
+                <Text style={[styles.uploadBtnText, { color: colors.text }]}>Upload History PDF</Text>
               </>
             )}
           </TouchableOpacity>
@@ -330,14 +452,7 @@ export default function ProfileScreen() {
               ))}
             </View>
           ) : null}
-
-          <View style={[styles.guardrailBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <IconShieldCheck color={colors.cyanAccent} size={16} style={{ marginRight: 6 }} />
-            <Text style={[styles.guardrailText, { color: colors.textMuted }]}>
-              Non-Diagnostic Directive: Stored behind private Supabase RLS. Haven NEVER diagnoses conditions from PDFs.
-            </Text>
-          </View>
-        </View>
+        </Card>
 
         {/* Menu list */}
         <View style={styles.menuContainer}>
@@ -348,24 +463,26 @@ export default function ProfileScreen() {
               onPress={() => router.push(item.route as any)}
               style={[styles.menuItem, { borderBottomColor: colors.border }]}
             >
-              <View style={styles.menuLeft}>
+              <View style={styles.menuItemLeft}>
                 {item.icon}
-                <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
+                <Text style={[styles.menuItemLabel, { color: colors.text }]}>{item.label}</Text>
               </View>
               <IconChevronRight color={colors.textMuted} size={18} />
             </TouchableOpacity>
           ))}
-        </View>
 
-        {/* Log out CTA */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleLogout}
-          style={[styles.logoutBtn, { borderColor: colors.border }]}
-        >
-          <IconLogOut color={colors.error} size={20} style={{ marginRight: 8 }} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>Log Out</Text>
-        </TouchableOpacity>
+          {/* Logout Action */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleLogout}
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+          >
+            <View style={styles.menuItemLeft}>
+              <IconLogOut color={colors.error} size={20} />
+              <Text style={[styles.menuItemLabel, { color: colors.error }]}>Log Out</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -377,19 +494,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: LAYOUT.spacing.lg,
-    paddingTop: LAYOUT.spacing.md,
+    paddingTop: LAYOUT.spacing.sm,
     paddingBottom: LAYOUT.spacing.xl,
   },
   profileCard: {
     alignItems: 'center',
     padding: LAYOUT.spacing.lg,
-    borderRadius: LAYOUT.borderRadius.large,
-    borderWidth: 1,
-    shadowColor: 'rgba(0,0,0,0.01)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 2,
     marginBottom: LAYOUT.spacing.md,
   },
   avatarBox: {
@@ -402,28 +512,155 @@ const styles = StyleSheet.create({
   },
   name: {
     ...TYPOGRAPHY.h2,
+    fontSize: 20,
     fontWeight: '700',
+    marginBottom: 2,
   },
   email: {
-    ...TYPOGRAPHY.body,
-    fontSize: 14,
-    marginTop: 2,
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 13,
+    marginBottom: 2,
   },
   phone: {
-    ...TYPOGRAPHY.caption,
+    ...TYPOGRAPHY.captionSmall,
+    fontSize: 12,
+  },
+  levelCard: {
+    padding: LAYOUT.spacing.md,
+    marginBottom: LAYOUT.spacing.md,
+  },
+  levelCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  levelCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  levelMeta: {
+    gap: 2,
+  },
+  levelTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  levelSubtext: {
+    fontSize: 12,
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginVertical: 4,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  streakFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  streakFooterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  streakFooterText: {
     fontSize: 13,
-    marginTop: 2,
+    fontWeight: '600',
+  },
+  longestStreakText: {
+    fontSize: 12,
+  },
+  badgesCard: {
+    padding: LAYOUT.spacing.md,
+    marginBottom: LAYOUT.spacing.md,
+  },
+  badgesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  badgesTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  badgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  badgeTile: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: LAYOUT.borderRadius.medium,
+    padding: 10,
+    alignItems: 'flex-start',
+  },
+  badgeTileIconWrap: {
+    position: 'relative',
+    marginBottom: 4,
+  },
+  badgeTileIcon: {
+    fontSize: 26,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    right: -4,
+    bottom: -2,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 8,
+    padding: 2,
+  },
+  badgeTileName: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  badgeTileDesc: {
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  safetyCard: {
+    padding: LAYOUT.spacing.md,
+    marginBottom: LAYOUT.spacing.md,
+  },
+  safetyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  safetyDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  crisisBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: LAYOUT.borderRadius.medium,
+    borderWidth: 1,
+  },
+  crisisBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   sectionCard: {
-    borderRadius: LAYOUT.borderRadius.large,
-    borderWidth: 1,
     padding: LAYOUT.spacing.md,
     marginBottom: LAYOUT.spacing.md,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 6,
   },
   sectionHeaderLeft: {
@@ -432,52 +669,40 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
+    ...TYPOGRAPHY.h3,
     fontSize: 15,
     fontWeight: '700',
   },
   sectionSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
   },
   baselineScoreText: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 6,
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 2,
   },
   smallActionBtn: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
   },
   smallActionBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-  },
-  badgePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  badgePillText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  divider: {
-    height: 1,
-    marginVertical: 12,
+    fontWeight: '600',
   },
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    padding: LAYOUT.spacing.md,
     borderRadius: LAYOUT.borderRadius.medium,
     borderWidth: 1,
     borderStyle: 'dashed',
-    marginTop: 12,
+    marginTop: 10,
   },
   uploadBtnText: {
     fontSize: 14,
@@ -490,62 +715,32 @@ const styles = StyleSheet.create({
   recordItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: LAYOUT.borderRadius.small,
+    padding: 8,
+    borderRadius: 8,
     borderWidth: 1,
   },
   recordItemText: {
     fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
-  },
-  guardrailBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: LAYOUT.borderRadius.medium,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-  guardrailText: {
-    fontSize: 11,
-    lineHeight: 15,
     flex: 1,
   },
   menuContainer: {
-    marginBottom: LAYOUT.spacing.xl,
-    marginTop: LAYOUT.spacing.xs,
+    marginTop: LAYOUT.spacing.sm,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: LAYOUT.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  menuLeft: {
+  menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-  menuLabel: {
+  menuItemLabel: {
     ...TYPOGRAPHY.body,
     fontSize: 15,
     fontWeight: '500',
-    marginLeft: LAYOUT.spacing.md,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: LAYOUT.borderRadius.medium,
-    paddingVertical: 14,
-    width: '100%',
-  },
-  logoutText: {
-    ...TYPOGRAPHY.body,
-    fontSize: 15,
-    fontWeight: '600',
   },
 });

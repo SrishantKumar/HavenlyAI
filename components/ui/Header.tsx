@@ -14,6 +14,7 @@ interface HeaderProps {
   title: string;
   showBackButton?: boolean;
   rightAction?: 'theme' | 'safety' | 'none';
+  rightComponent?: React.ReactNode;
   onRightPress?: () => void;
 }
 
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   title,
   showBackButton = false,
   rightAction = 'theme',
+  rightComponent,
   onRightPress,
 }) => {
   const router = useRouter();
@@ -52,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
       </View>
 
       <View style={styles.rightContainer}>
+        {rightComponent}
         {rightAction === 'theme' && (
           <TouchableOpacity
             onPress={handleThemeToggle}

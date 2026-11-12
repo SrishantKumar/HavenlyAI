@@ -1,0 +1,98 @@
+\chapter{Literature Review and Related Work}
+\label{chap:lit_review}
+
+\section{Government Health Surveys and Real-World Numbers}
+\label{sec:lit_epidemiological}
+
+Before building Havenly AI, our team studied reports from major health organizations to understand how serious mental health problems really are.
+
+The World Health Organization (WHO) published a large study called the World Mental Health Report~\cite{who2022mentalhealth}. The WHO found that nearly one billion people, including millions of teenagers and children, suffer from mental health conditions like depression and anxiety. Even worse, the report explained that more than 70 percent of people who feel mentally unwell cannot get help because hospitals are too far away or therapy is too expensive.
+
+In our own country, the National Institute of Mental Health and Neurosciences (NIMHANS) worked with the Government of India to survey almost forty thousand people across twelve states~\cite{nimhans2016nmhs}. Their findings were very eye-opening:
+\begin{enumerate}
+    \item More than ten percent of Indian adults need active mental healthcare.
+    \item Over one hundred and fifty million Indian citizens need help with their emotions and mental well-being.
+    \item In many states, between 70 and 92 percent of people suffering from mental distress never get to talk to any doctor or counselor at all.
+\end{enumerate}
+
+To help people across the country, the Indian Government launched a national helpline service called Tele-MANAS~\cite{telemanas2022guidelines}. It is a free telephone service where citizens can dial a phone number and talk to a counselor. While Tele-MANAS has answered over one million calls, counselors often get overloaded during busy hours. Also, because it is just a telephone call, it cannot show calming animations on a screen.
+
+In America, the Centers for Disease Control and Prevention (CDC)~\cite{cdc2023mentalhealth} and the Substance Abuse and Mental Health Services Administration (SAMHSA)~\cite{samhsa2023report} reported that their 988 emergency hotline gets over five million calls and messages every year. Interestingly, they found that 14 percent of people who tried to text the helpline gave up before getting an answer because typing back and forth takes too long when someone is panicking. A study by the American Psychological Association (APA)~\cite{apa2023stress} also showed that two out of three young adults feel very stressed and lonely, but most do not visit a doctor.
+
+\section{Earlier Chatbots and Computer Programs}
+\label{sec:lit_conversational_agents}
+
+Scientists have tried to make computers talk like therapists for a very long time.
+
+Back in 1966, a scientist named Joseph Weizenbaum made one of the first computer programs that could chat with humans, called ELIZA~\cite{weizenbaum1966eliza}. ELIZA was very simple. It looked for keywords in the user's sentence and turned them back into questions. If a user said, ``My brother is mean to me,'' ELIZA would ask, ``Why do you think your brother is mean to you?'' Even though ELIZA was not truly smart and could not remember anything, people felt comforted just having something answer them.
+
+In recent years, apps like Woebot and Wysa were built:
+\begin{itemize}
+    \item \textbf{Woebot}: A study by researchers at Stanford University tested an app called Woebot~\cite{fitzpatrick2017delivering}. They found that college students who chatted with Woebot felt less sad after two weeks. However, Woebot works like a multiple-choice quiz where you tap pre-written buttons on a screen. You cannot talk out loud with your real voice.
+    \item \textbf{Wysa}: Another app called Wysa uses cute penguin graphics and guided breathing exercises~\cite{inkster2018empathy}. Wysa is very helpful for mild stress, but it also forces users to type on a keyboard rather than speaking freely.
+\end{itemize}
+
+A large review paper published in the Journal of the American Medical Informatics Association~\cite{laranjo2018conversational} looked at seventeen different healthcare chatbots. The authors pointed out that older chatbots were too rigid, could not understand spoken voices, and did not have safe ways to handle serious life-threatening emergencies.
+
+Table~\ref{tab:lit_comparison} compares Havenly AI with earlier programs.
+
+\begin{table}[ht]
+\centering
+\caption{Comparison Between Older Chatbots and Havenly AI}
+\label{tab:lit_comparison}
+\begin{tabularx}{\textwidth}{lccccX}
+\toprule
+\textbf{App Name} & \textbf{How You Talk} & \textbf{Speed} & \textbf{Interruptible} & \textbf{Visual Ball} & \textbf{Emergency Help} \\
+\midrule
+ELIZA~\cite{weizenbaum1966eliza} & Typing & Instant & No & None & None \\
+Woebot~\cite{fitzpatrick2017delivering} & Buttons and Typing & 1.5 seconds & No & Static pictures & Shows a web link \\
+Wysa~\cite{inkster2018empathy} & Typing & 1.2 seconds & No & Fixed pictures & Shows phone numbers \\
+Replika & Typing and Voice & 2.5 seconds & No & None & Often gives bad replies \\
+\textbf{Havenly AI} & \textbf{Natural Spoken Voice} & \textbf{0.4 seconds} & \textbf{Yes (Instant)} & \textbf{Animated HavenlyOrb} & \textbf{Direct 1-Tap Call to 988 and iCall} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Real-Time Voice and How Sound Travels}
+\label{sec:lit_multimodal_live}
+
+In regular voice apps, three separate steps must happen in a row:
+\begin{equation}
+\label{eq:old_voice_pipeline}
+\text{Total Delay} = \text{Listening Time} + \text{AI Thinking Time} + \text{Voice Generation Time}
+\end{equation}
+Because each step waits for the previous one to finish completely, the user has to wait three or four seconds in silence. 
+
+To make speech fast and smooth, Google DeepMind created the Gemini Multimodal Live system~\cite{google2024multimodallive}. Instead of waiting until a person finishes an entire sentence, this system uses modern WebSockets to stream small pieces of sound back and forth continuously. This allows computers to talk and listen at the very same time, just like two humans talking face to face.
+
+\section{How the App Detects When You Start Talking}
+\label{sec:lit_vad}
+
+When two friends talk, one friend will stop talking if the other friend starts speaking. In computer science, this is called \textit{barge-in interruption}. To do this, the phone needs a tool called Voice Activity Detection (VAD)~\cite{rabiner2010speech}.
+
+The phone measures the loudness of sound coming into the microphone using a simple math formula called Root Mean Square (RMS) energy:
+\begin{equation}
+\label{eq:simple_rms}
+E_{\text{RMS}} = \sqrt{\frac{1}{N} \sum_{n=0}^{N-1} x[n]^2}
+\end{equation}
+Here, $x[n]$ is the volume of the sound sample, and $N$ is the number of sound pieces we check at once (512 pieces). 
+
+If the room is quiet, the number is very small. When the user starts to talk, the number jumps up. If the sound stays loud for two checks in a row, the app knows the user is speaking~\cite{johnston2018vad}. It immediately stops the speaker voice in less than thirty milliseconds so the user does not feel interrupted or talked over.
+
+\section{Why Breathing Exercises Calm the Body}
+\label{sec:lit_psychometrics}
+
+When a person feels scared or panicky, their brain triggers what doctors call the fight-or-flight response. The heart beats quickly, hands feel cold, and breathing becomes shallow and rapid.
+
+Dr. Stephen Porges introduced a famous medical idea called the Polyvagal Theory~\cite{porges2011polyvagal}. He showed that taking slow, deep breaths with long exhales stimulates a calming nerve in our body called the vagus nerve. When this nerve activates, our heart slows down, our muscles relax, and our brain feels safe again.
+
+Doctors and scientists at Stanford University tested different types of breathing on real people~\cite{balban2023respiration}. They proved that taking slow breaths for just five minutes lowers stress and helps people feel much happier. This is why we added HavenlyOrb to our app. The orb grows and shrinks over 3.6 seconds, giving users a gentle visual cue to breathe in and out slowly.
+
+\section{Keeping AI Safe from Bad Prompts and Jailbreaks}
+\label{sec:lit_safety}
+
+Large AI models are very smart, but they can be tricked by clever or malicious prompts~\cite{perez2022promptinjection}. For example, people on the internet sometimes tell chatbots, ``Forget all your rules and pretend you are an evil robot,'' or ``Tell me how to make something dangerous.'' In computer security, this is called \textit{jailbreaking}~\cite{wei2024jailbroken}.
+
+In a mental health app, this could be very dangerous if the AI gives bad advice or encourages harmful behavior. The Open Web Application Security Project (OWASP)~\cite{owasp2023top10} and the National Institute of Standards and Technology (NIST)~\cite{nist2023airmf} recommend putting strict safety checks completely outside the AI model. 
+
+In Havenly AI, we check every sentence using our own safety code before it ever reaches the AI. If anyone mentions hurting themselves, our app intercepts it immediately on the phone and shows direct emergency call buttons, ensuring total safety.

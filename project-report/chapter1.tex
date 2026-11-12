@@ -1,0 +1,99 @@
+\chapter{Introduction}
+\label{chap:intro}
+
+\section{Background and Why We Built Havenly AI}
+\label{sec:intro_background}
+
+Mental health is just as important as physical health. When our bodies get sick, we go to a doctor, but when people feel sad, anxious, or lonely, it is often much harder to find help. According to the World Health Organization (WHO)~\cite{who2022mentalhealth}, nearly one billion people across the world live with some kind of mental health condition. Many of these people deal with constant worry or deep sadness every day.
+
+In India, getting mental health support is even more difficult. The National Mental Health Survey conducted by NIMHANS and the Ministry of Health~\cite{nimhans2016nmhs} showed that more than 80 percent of people who need mental health care do not receive any treatment at all. There are several clear reasons for this big problem:
+\begin{enumerate}
+    \item \textbf{Very Few Doctors}: In India, there is less than one psychiatrist for every one hundred thousand people~\cite{telemanas2022guidelines}. This means millions of people have no doctor nearby to speak to.
+    \item \textbf{Too Expensive}: Private counseling sessions usually cost thousands of rupees for just one single hour. Students and ordinary families simply cannot afford to pay that kind of money every week.
+    \item \textbf{Fear of Being Judged}: In our society, people often feel shy, embarrassed, or afraid that others will make fun of them if they admit they are struggling emotionally~\cite{apa2023stress}. Because of this fear, many people stay silent.
+    \item \textbf{Late Night Loneliness}: Most emotional breakdowns, panic attacks, and scary feelings happen late at night, between 11:00 PM and 4:00 AM~\cite{samhsa2023report}. At that time, hospitals and clinics are closed, and friends or parents might be asleep.
+\end{enumerate}
+
+The Government of India started the Tele-MANAS helpline to give people someone to call on the phone~\cite{telemanas2022guidelines}. While this helps a lot of people, the phone lines are often busy, counselors get very tired, and ordinary telephone calls cannot show calming visual exercises on the screen. Because of this, we wanted to build a friendly mobile app that is always awake, always free, and ready to listen whenever someone needs comfort.
+
+\section{The Problems with Existing Apps}
+\label{sec:intro_problem_statement}
+
+Today, there are a few smartphone apps for mental health, but they have major flaws that make them hard to use during difficult times:
+
+\begin{itemize}
+    \item \textbf{Typing on a Keyboard is Stressful}: Most apps make you type text on a tiny screen. When a person is crying, shaking, or having an anxiety attack, typing is very hard. It is much more natural to just talk out loud~\cite{fitzpatrick2017delivering}.
+    \item \textbf{Robotic Voices and Long Pauses}: Most voice assistants take three to four seconds to answer. When you talk to someone who takes that long to reply, it feels robotic, unnatural, and awkward~\cite{geminiteam2024gemini15}.
+    \item \textbf{Expensive Cloud Limits}: Companies like ElevenLabs or Google charge money for voice synthesis or lock you out after only a few short minutes of talking. This makes it impossible for students to build free apps that talk for as long as the user wants.
+    \item \textbf{AI Giving Dangerous Advice}: Regular AI chatbots sometimes pretend to be real doctors, try to guess illnesses, or give dangerous advice when they are confused~\cite{miner2016smartphone}.
+    \item \textbf{No Calming Visuals}: When people are stressed, their breathing becomes shallow and fast. Just looking at lines of text does not help the body calm down~\cite{porges2011polyvagal}.
+\end{itemize}
+
+Table~\ref{tab:problem_solution_matrix} shows how Havenly AI solves each of these problems.
+
+\begin{table}[ht]
+\centering
+\caption{Everyday Problems and How Havenly AI Solves Them}
+\label{tab:problem_solution_matrix}
+\begin{tabularx}{\textwidth}{lXX}
+\toprule
+\textbf{Issue} & \textbf{Common Limitation} & \textbf{Our Solution in Havenly AI} \\
+\midrule
+\textbf{Cost} & Therapy costs a lot of money and has long waiting lists. & Havenly AI is 100 percent free to use, all day and all night. \\
+\textbf{Input Method} & Typing on screens during panic attacks is stressful. & Users simply speak, and the app listens through the microphone. \\
+\textbf{Speed} & Many apps take 3 to 4 seconds to answer in robotic voices. & Fast streaming voice that answers in less than half a second. \\
+\textbf{Safety} & Normal AI models can give wrong medical advice. & Strict safety rules that block medical advice and show helpline buttons. \\
+\textbf{Body Calmness} & Text alone does not slow down a racing heart. & A breathing glowing ball on the screen guides slow, steady breaths. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{What We Made: Havenly AI}
+\label{sec:intro_proposed_platform}
+
+To solve these problems, we created \textbf{Havenly AI}. It is an easy-to-use mobile and web application designed to give emotional support, active listening, and calm guidance. 
+
+When you open Havenly AI, you do not have to type. You can tap the call button and talk just like you would on a phone call with a caring friend. The app includes:
+\begin{enumerate}
+    \item \textbf{Natural Voice Conversation}: The app uses Google Gemini Live and OpenRouter free models to understand what you say and reply with kindness and empathy~\cite{google2024multimodallive}.
+    \item \textbf{Instant Interruption}: If Haven is speaking and you want to jump in or say something else, you can just start talking. The app notices your voice immediately and stops speaking right away so you can talk freely.
+    \item \textbf{Zero-Cost Talking}: Instead of paying for expensive cloud voices, we calibrated the phone's own built-in voice system to sound warm, slow, and human. This means users can talk for hours without costing a single rupee.
+    \item \textbf{HavenlyOrb}: A friendly glowing character on the screen that floats, blinks, and gently grows bigger and smaller. Following its gentle expansion helps users take slow, relaxing breaths~\cite{balban2023respiration}.
+    \item \textbf{Emergency Help Screen}: If anyone mentions suicide or self-harm, the app immediately displays red buttons to call 988, iCall, or 112 with one single tap.
+\end{enumerate}
+
+\section{Project Objectives}
+\label{sec:intro_objectives}
+
+The main goals of our project are:
+\begin{enumerate}
+    \item To build a smooth voice system on mobile phones that lets users talk and interrupt naturally in under half a second.
+    \item To make the entire platform free and sustainable by using free open-source AI models and smart voice calibration on the device.
+    \item To build a strict safety system that catches harmful thoughts and instantly connects users to real emergency helplines.
+    \item To design the animated HavenlyOrb using smooth screen graphics so users feel peaceful while looking at the screen.
+    \item To keep all user conversations completely safe and private using phone hardware security and database protection~\cite{supabase2024rls}.
+\end{enumerate}
+
+\section{Our Main Work and Contributions}
+\label{sec:intro_contributions}
+
+The main things we built and accomplished in this project are:
+\begin{itemize}
+    \item We connected four main system layers: the mobile phone screen, the fast audio network, the smart AI models, and the private database.
+    \item We created a smart sound detector on the phone that stops the AI from talking the millisecond the user begins to speak.
+    \item We designed an algorithm that switches between free AI models automatically so the app never crashes or stops working.
+    \item We made sure the AI always knows its limits. It will never pretend to be a doctor, and it will never write computer code or homework essays when someone needs emotional comfort.
+    \item We tested the app on different Android phones, iPhones, and computers, proving that it runs fast and reliably for real users.
+\end{itemize}
+
+\section{How This Report is Organized}
+\label{sec:intro_organization}
+
+The rest of this report is divided into five chapters:
+\begin{itemize}
+    \item \textbf{Chapter 2} looks at what earlier scientists and government health organizations found about mental health and chatbots.
+    \item \textbf{Chapter 3} shows our brand new master system architecture and explains how each part works.
+    \item \textbf{Chapter 4} explains the actual code and tools we used to build the phone app, the audio system, and the database.
+    \item \textbf{Chapter 5} shares our test results, including how fast the app responds, how well the safety checks work, and what students thought of it.
+    \item \textbf{Chapter 6} concludes our project report and talks about how we plan to add Indian languages like Hindi and Bengali in the future.
+\end{itemize}

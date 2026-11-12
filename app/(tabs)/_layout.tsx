@@ -11,14 +11,20 @@ const IconUser = User as any;
 
 import { COLORS } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
+import { useQuestStore, getLocalDateString } from '../../store/useQuestStore';
+import { View } from 'react-native';
 
 export default function TabsLayout() {
   const isDark = useAppStore((state) => state.theme === 'dark');
+  const lastQuestDate = useQuestStore((state) => state.lastQuestDate);
   const colors = isDark ? COLORS.dark : COLORS.light;
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === 'web';
   const tabHeight = isWeb ? 84 : Math.max(76, 64 + insets.bottom);
   const tabPaddingBottom = isWeb ? 16 : Math.max(insets.bottom, 10);
+
+  const todayStr = getLocalDateString();
+  const isQuestPending = lastQuestDate !== todayStr;
 
   return (
     <Tabs
@@ -55,7 +61,24 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => <IconHome color={color} size={22} />,
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ position: 'relative' }}>
+              <IconHome color={color} size={22} />
+              {isQuestPending && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -1,
+                    right: -2,
+                    width: 7,
+                    height: 7,
+                    borderRadius: 3.5,
+                    backgroundColor: colors.primary,
+                  }}
+                />
+              )}
+            </View>
+          ),
         }}
       />
       <Tabs.Screen

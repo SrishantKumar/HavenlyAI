@@ -1,26 +1,34 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { COLORS, LAYOUT } from '../../constants/theme';
+import { Sparkles, Mic, Wind } from 'lucide-react-native';
+
+import { COLORS, LAYOUT, TYPOGRAPHY } from '../../constants/theme';
 import { useAppStore } from '../../store/useAppStore';
 import { chatService } from '../../services/chat/chatService';
 import { api } from '../../services/api';
+import { getTodaysQuest } from '../../constants/quests';
 import Header from '../../components/ui/Header';
 import ChatBubble from '../../components/chat/ChatBubble';
 import ChatComposer from '../../components/chat/ChatComposer';
 import TypingIndicator from '../../components/chat/TypingIndicator';
 
+const IconSparkles = Sparkles as any;
+const IconMic = Mic as any;
+const IconWind = Wind as any;
+
 export default function ChatSessionScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
   const router = useRouter();
-  
+
   const { theme, messages, setMessages, addMessage } = useAppStore();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
+  const isDark = theme === 'dark';
 
   const [loading, setLoading] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
-  
+
   const flatListRef = useRef<FlatList>(null);
 
   // 1. Load conversation messages on launch
@@ -49,6 +57,20 @@ export default function ChatSessionScreen() {
     }
   }, [messages]);
 
+  // Quick Action Handlers
+  const handleBreathePress = () => {
+    handleSendText("Can we do a short 4-7-8 breathing exercise together?");
+  };
+
+  const handleQuestPress = () => {
+    const today = getTodaysQuest();
+    router.push(`/quest/${today.id}` as any);
+  };
+
+  const handleVoicePress = () => {
+    router.push('/voice/session');
+  };
+
   // Handle Text Submission
   const handleSendText = async (text: string) => {
     if (!conversationId) return;
@@ -67,9 +89,7 @@ export default function ChatSessionScreen() {
     setAiTyping(true);
 
     try {
-      // B. Send to chat service and wait for response
-      const response = await chatService.sendMessage(text, conversationId, messages);
-      // C. Update actual messages from server output
+      await chatService.sendMessage(text, conversationId, messages);
       const history = await chatService.getMessages(conversationId);
       setMessages(history);
     } catch (e) {
@@ -85,9 +105,7 @@ export default function ChatSessionScreen() {
 
     setAiTyping(true);
     try {
-      // A. Upload and get AI text reply
       await api.uploadAudio(uri, conversationId, transcript);
-      // B. Refresh messages list
       const history = await chatService.getMessages(conversationId);
       setMessages(history);
     } catch (e) {
@@ -101,10 +119,45 @@ export default function ChatSessionScreen() {
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <Header title="HavenlyAI" showBackButton rightAction="safety" />
 
+      {/* Quick Action Navigation Row */}
+      <View style={[styles.quickBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickBarContent}
+        >
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleBreathePress}
+            style={[styles.quickPill, { backgroundColor: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(14, 165, 233, 0.1)' }]}
+          >
+            <IconWind color={colors.cyanAccent} size={14} style={{ marginRight: 6 }} />
+            <Text style={[styles.quickPillText, { color: colors.cyanAccent }]}>Breathe</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleQuestPress}
+            style={[styles.quickPill, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.16)' : 'rgba(139, 92, 246, 0.1)' }]}
+          >
+            <IconSparkles color={colors.accent} size={14} style={{ marginRight: 6 }} />
+            <Text style={[styles.quickPillText, { color: colors.accent }]}>Grounding Quest</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleVoicePress}
+            style={[styles.quickPill, { backgroundColor: isDark ? 'rgba(129, 140, 248, 0.16)' : 'rgba(99, 102, 241, 0.1)' }]}
+          >
+            <IconMic color={colors.primary} size={14} style={{ marginRight: 6 }} />
+            <Text style={[styles.quickPillText, { color: colors.primary }]}>Voice Session</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <View style={styles.chatArea}>
           <FlatList
@@ -131,6 +184,25 @@ export default function ChatSessionScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  quickBar: {
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  quickBarContent: {
+    paddingHorizontal: LAYOUT.spacing.md,
+    gap: 8,
+  },
+  quickPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: LAYOUT.borderRadius.full,
+  },
+  quickPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   keyboardView: {
     flex: 1,

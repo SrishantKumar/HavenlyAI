@@ -4973,12 +4973,82 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       svg [data-node-id], svg [data-edge-from], svg [data-detail], svg [data-detail-anchor], svg [data-legend-hit], svg { transition: none !important; }
     }
   </style>
+
+<style id="havenly-nov7-ui-enhancements">
+  .upgrade-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    margin-right: 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+  }
+  .pulse-indicator {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 10px #10b981;
+    animation: pulseLiveDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulseLiveDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(1.3); }
+  }
+  .cards {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(240px, 1fr)) !important;
+    gap: 16px !important;
+    margin-top: 24px !important;
+  }
+  @media (max-width: 1200px) {
+    .cards {
+      grid-template-columns: repeat(2, minmax(240px, 1fr)) !important;
+    }
+  }
+  @media (max-width: 680px) {
+    .cards {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .card {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
+    border-radius: 12px !important;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: rgba(99, 102, 241, 0.4) !important;
+  }
+  .card-dot.amber {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  }
+  .t-region {
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+</style>
+
 </head>
 <body>
   <!-- Toolbar: theme, live visual style, trace motion, presentation stage, and export.
        Motion appears only for trace-enabled artifacts and has no shortcut;
        Keyboard: T toggles theme, S cycles style, F toggles the stage, E opens export. -->
   <div class="toolbar" role="toolbar" aria-label="Diagram actions">
+    <div class="upgrade-status-badge">
+      <span class="pulse-indicator"></span>
+      <span>Nov 7 Clinical &amp; Voice Upgrade</span>
+    </div>
     <button id="btn-theme" type="button"
             title="Toggle theme (T)"
             aria-label="Toggle color theme"
@@ -5085,7 +5155,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"voice-primary","label":"Voice-native live stream","focus":["user","client_ui","audio_vad","live_ws","gemini_live"],"note":"Follow real-time full-duplex voice capture from user microphone to Gemini Live API."},{"id":"safety-and-fallback","label":"Safety and AI fallback","focus":["state_store","safety_guard","rest_gateway","openrouter_hub"],"note":"Inspect client-side deterministic safety guardrails and multi-provider REST fallback."},{"id":"persistence-and-auth","label":"Persistence and identity","focus":["client_ui","audio_vad","supa_auth","supa_db"],"note":"Examine JWT session security and PostgreSQL reflection persistence with Row-Level Security."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id": "voice-primary", "label": "Voice-native live stream", "focus": ["user", "client_ui", "audio_vad", "live_ws", "gemini_live"], "note": "Follow real-time 24kHz full-duplex voice capture with Aoede/Kore neural voices and client VAD barge-in."}, {"id": "safety-and-fallback", "label": "Safety and AI fallback", "focus": ["state_store", "safety_guard", "rest_gateway", "openrouter_hub", "edge_tts"], "note": "Inspect client-side deterministic safety guardrails, 988 emergency triage, and multi-provider REST + Edge TTS fallback."}, {"id": "clinical-behavioral", "label": "Clinical & behavioral activation", "focus": ["client_ui", "state_store", "phq4_assessment", "mindful_gamification", "supa_db"], "note": "Examine PHQ-4 psychometric baseline intake, acute panic quick-skip, and mindful gamification streak progression."}, {"id": "persistence-and-vault", "label": "Persistence & medical vault", "focus": ["client_ui", "supa_auth", "supa_db", "medical_storage"], "note": "Examine hardware Keystore JWT authentication, soft-deleted conversation archiving, and user-isolated PDF medical records vault."}]</script>
 
     <script id="archify-i18n-data" type="application/json">{"locale":"en","messages":{"viewer.kind.frontend":"Frontend","viewer.kind.backend":"Backend","viewer.kind.database":"Database","viewer.kind.cloud":"Cloud","viewer.kind.security":"Security","viewer.kind.messagebus":"Message bus","viewer.kind.external":"External","viewer.kind.neutral":"Neutral","viewer.kind.node":"Node","viewer.kind.start":"Start","viewer.kind.active":"Active","viewer.kind.waiting":"Waiting","viewer.kind.decision":"Decision","viewer.kind.success":"Success","viewer.kind.failure":"Failure","viewer.toolbar.actions":"Diagram actions","viewer.theme.toggle.title":"Toggle theme (T)","viewer.theme.toggle":"Toggle color theme","viewer.theme.dark":"Dark","viewer.theme.light":"Light","viewer.preset.choose.title":"Choose visual style (S cycles)","viewer.preset.choose":"Choose visual style","viewer.preset.style":"Style","viewer.preset.menu":"Visual style","viewer.preset.identity":"Visual identity","viewer.preset.cycles":"S cycles","viewer.preset.classic":"Classic","viewer.preset.classic.short":"Classic","viewer.preset.classic.hint":"Stable technical default","viewer.preset.flow":"Signal Flow","viewer.preset.flow.short":"Flow","viewer.preset.flow.hint":"Motion-forward presentation","viewer.preset.blueprint":"Blueprint","viewer.preset.blueprint.hint":"Engineering review","viewer.preset.editorial":"Editorial","viewer.preset.editorial.hint":"Publication and launch notes","viewer.preset.badge.signalFlow":"SIGNAL FLOW","viewer.preset.badge.blueprint":"BLUEPRINT / REV 01","viewer.preset.badge.editorial":"EDITORIAL / FIELD NOTE","viewer.preset.badge.editorialPlate":"ARCHIFY / PLATE 04","viewer.preset.current":"Visual style: {style}. Choose visual style","viewer.motion.live":"Live","viewer.motion.still":"Still","viewer.motion.pause":"Pause motion","viewer.motion.resume":"Resume motion","viewer.motion.reduced":"Motion paused by reduced-motion preference","viewer.motion.hidden":"Motion paused while this page is hidden","viewer.motion.yielding":"Pause motion; currently yielding to {owner}","viewer.motion.yielding.title":"Live preview enabled · yielding to {owner}","viewer.owner.story":"the guided story","viewer.owner.chapter":"the active chapter","viewer.owner.chapterPreview":"the chapter delta preview","viewer.owner.handoff":"the chapter handoff","viewer.owner.route":"Route Probe","viewer.owner.lens":"Semantic Lens","viewer.owner.relationship":"Relationship Preview","viewer.owner.intent":"Intent Trace","viewer.owner.focus":"semantic focus","viewer.owner.legend":"legend preview","viewer.owner.reader":"reader interaction","viewer.present.enter":"Enter presentation stage","viewer.present.enter.title":"Presentation stage (F)","viewer.present.exit":"Exit presentation stage","viewer.present.exit.title":"Exit presentation stage (F or Escape)","viewer.present.present":"Present","viewer.present.exit.label":"Exit","viewer.export.button":"Export","viewer.export.button.title":"Export diagram (E)","viewer.export.diagram":"Export diagram","viewer.export.menu":"Export","viewer.export.subtitle":"Portable, clean outputs","viewer.export.share":"Share","viewer.export.shareCard":"Share Card","viewer.export.routeShareCard":"Route Share Card","viewer.export.reachShareCard":"Reach Share Card","viewer.export.copyShareCard":"Copy Share Card","viewer.export.copyDiagram":"Copy diagram","viewer.export.clipboardPng":"PNG to clipboard","viewer.export.raster":"Raster images","viewer.export.image":"Image","viewer.export.lossless":"Lossless image","viewer.export.compact":"Compact image","viewer.export.modern":"Modern image","viewer.export.vectorMotion":"Vector and motion","viewer.export.vectorMotion.heading":"Vector \u0026 motion","viewer.export.editable":"Editable vector","viewer.export.motion6s":"6s motion","viewer.export.unsupported":"Not supported by this browser","viewer.export.clipboardUnsupported":"Clipboard image write not supported by this browser","viewer.export.clipboardUnsupported.period":"Clipboard image write not supported by this browser.","viewer.export.clipboardUnsupported.short":"Clipboard image write not supported in this browser.","viewer.export.motionUnavailable":"Motion capture unavailable in this browser","viewer.export.webmUnavailable":"WebM unavailable in this browser","viewer.export.failed":"Export failed: {message}","viewer.export.unknownVariant":"Unknown Share Card variant: {variant}","viewer.export.routeRequired":"Trace a route before exporting a Route Share Card","viewer.export.reachRequired":"Trace authored reach before exporting a Reach Share Card","viewer.export.unknown":"unknown","viewer.export.routeFailed":"Route Share Card export failed: {message}","viewer.export.reachFailed":"Reach Share Card export failed: {message}","viewer.export.copyFailed":"Copy failed: {message}","viewer.export.copiedPng":"Copied PNG to clipboard","viewer.export.copiedShare":"Copied Share Card","viewer.export.downloadedShare":"Downloaded Share Card","viewer.export.downloadedRoute":"Downloaded Route Share Card","viewer.export.downloadedReach":"Downloaded Reach Share Card","viewer.export.downloadedWebm":"Downloaded WebM","viewer.export.recording":"Recording 6 seconds of motion…","viewer.export.card.routeSummary.one":"Route: {source} → {target} · {count} directed hop","viewer.export.card.routeSummary.other":"Route: {source} → {target} · {count} directed hops","viewer.export.card.reachSummary":"Authored {direction} from {origin} · {nodes} · {links} · max {hops}","viewer.export.card.node.one":"{count} node","viewer.export.card.node.other":"{count} nodes","viewer.export.card.link.one":"{count} link","viewer.export.card.link.other":"{count} links","viewer.export.card.hop.one":"{count} hop","viewer.export.card.hop.other":"{count} hops","viewer.export.card.routeBadge":"ARCHIFY · ROUTE · {hops}","viewer.export.card.reachBadge":"ARCHIFY · {direction} REACH","viewer.export.card.defaultBadge":"ARCHIFY · {preset} · {theme}","viewer.export.direction.upstream":"Upstream","viewer.export.direction.downstream":"Downstream","viewer.export.error.canvasUnavailable":"Canvas unavailable for {label}","viewer.export.error.contextUnavailable":"2D canvas context unavailable for {label}","viewer.export.error.toBlobUnavailable":"canvas.toBlob unavailable for {label}","viewer.export.error.toBlobNull":"canvas.toBlob returned no data for {label}","viewer.export.error.variantsCombined":"Share Card variants cannot be combined","viewer.export.error.viewerState":"Share Card export could not remove temporary viewer state","viewer.export.error.routeState":"Route Card export could not preserve the resolved route safely","viewer.export.error.reachState":"Reach Card export could not preserve authored reach safely","viewer.export.error.webmRequirements":"WebM motion export requires a trace animation and browser MediaRecorder support","viewer.export.error.mediaRecorder":"MediaRecorder failed","viewer.export.error.emptyWebm":"MediaRecorder produced an empty WebM","viewer.export.error.webmBackground":"SVG background could not be loaded for WebM export","viewer.guided.region":"Guided diagram views","viewer.guided.previous":"Previous guided view","viewer.guided.previous.title":"Previous guided view ([)","viewer.guided.next":"Next guided view","viewer.guided.next.title":"Next guided view (])","viewer.guided.views":"Guided views","viewer.guided.explore":"Explore this system","viewer.guided.intro":"Step through curated paths without changing the source diagram.","viewer.guided.trail":"Story trail","viewer.guided.beat":"Beat","viewer.guided.nextBeat":"Next","viewer.guided.play":"Play guided story","viewer.guided.play.title":"Play guided story (P)","viewer.guided.pause":"Pause guided story","viewer.guided.pause.title":"Pause guided story (P)","viewer.guided.replay":"Replay guided story","viewer.guided.replay.title":"Replay guided story (P)","viewer.guided.playStory":"Play story","viewer.guided.pauseStory":"Pause","viewer.guided.replayStory":"Replay story","viewer.guided.motionUnavailable":"Story playback unavailable while motion is Still","viewer.guided.enableMotion":"Switch motion to Live to play the guided story","viewer.guided.selectBeatLink":"Select a Story Beat to copy its exact link","viewer.guided.copyMoment":"Copy moment","viewer.guided.momentCopied":"Moment link copied","viewer.guided.momentCopyFailed":"Could not copy story moment link","viewer.guided.copied":"Copied","viewer.guided.copyFailed":"Copy failed","viewer.guided.showAll":"Show all","viewer.guided.showAll.aria":"Show entire diagram","viewer.guided.chapters":"Story chapters","viewer.guided.storyTrail":"Story trail for {label}: {count} beats","viewer.guided.chapter.open":"Open chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.current":"Current chapter {index} of {total}: {label}, {count} stops","viewer.guided.chapter.selectedNodes":"{count} selected nodes","viewer.guided.chapter.stops":"{count} stops","viewer.guided.chapter.stop.one":"{count} stop","viewer.guided.chapter.stop.other":"{count} stops","viewer.guided.chapter.current.title":"{label} — current chapter, {count} stops","viewer.guided.chapter.delta.expanded":"{stay} stay, {enter} enter, {leave} leave","viewer.guided.chapter.delta.aria":"Open chapter {index} of {total}: {label}. Chapter focus delta: {delta}","viewer.guided.chapter.delta.title":"{label} — {delta} chapter focus","viewer.guided.handoff":"{from} → {to} · via {label}","viewer.guided.share.chapter":"Chapter {index} / {total}","viewer.guided.share.initial":"Chapter 01 / 01","viewer.guided.share.default":"Guided chapter","viewer.guided.state.ready":"Ready","viewer.guided.state.playing":"Playing","viewer.guided.state.settled":"Settled","viewer.guided.state.paused":"Paused","viewer.guided.state.pinned":"Pinned","viewer.guided.state.still":"Still","viewer.guided.share.step":"Step {index} / {total} · {label}","viewer.guided.share.staticMoment":"{step} · Static moment","viewer.guided.share.complete":"{count} steps complete · {note}","viewer.guided.share.settled":"Path settled for reading.","viewer.guided.share.staticPath":"{count} steps · Static path","viewer.guided.share.ready":"{count} steps · Ready","viewer.guided.share.aria":"{state} chapter {index} of {total}: {label}. {beat}. {route}","viewer.guided.beat.start":"Beat {index} / {total} · {label} · starting point","viewer.guided.beat.forward":"Beat {index} / {total} · {from} → {to}","viewer.guided.beat.reverse":"Beat {index} / {total} · {from} → {to} · reverse authored link","viewer.guided.beat.multiple":"Beat {index} / {total} · {from} ⇄ {to} · {count} authored links","viewer.guided.beat.group":"Beat {index} / {total} · {from} · {to} · grouped · no direct link","viewer.guided.beat.aria.prefix":"Story beat {index} of {total}: {label}. ","viewer.guided.beat.aria.start":"Starting point.","viewer.guided.beat.aria.forward":"From {from} through one authored forward relationship.","viewer.guided.beat.aria.reverse":"From {from}; the authored relationship points from {to} to {from}.","viewer.guided.beat.aria.multiple":"From {from} through {count} authored relationships; shown without arbitrary motion.","viewer.guided.beat.aria.group":"Grouped from {from} with no direct authored relationship.","viewer.guided.caption.start":"Starting point","viewer.guided.caption.grouped":"Grouped transition · no direct authored link","viewer.guided.caption.more":" +{count} more","viewer.guided.caption.reverse":"Reverse authored relationship","viewer.guided.caption.relationships":"{count} authored relationships","viewer.guided.caption.relationship":"Authored relationship","viewer.guided.caption.direction":"authored direction: {from} → {to}","viewer.guided.caption.starting":"Authored starting point","viewer.guided.beatLink":"Copy link to current story moment: Beat {index} of {total}: {label}","viewer.guided.noStory":"This diagram has no authored guided story.","viewer.guide.eyebrow":"Diagram guide","viewer.guide.close":"Close diagram guide","viewer.guide.inspecting":"Inspecting compiled semantics","viewer.guide.actions":"Diagram exploration actions","viewer.guide.find":"Find any node","viewer.guide.find.hint":"Search labels, responsibilities, kinds, and stable IDs.","viewer.guide.route":"Trace a route","viewer.guide.route.aria":"Trace a directed route","viewer.guide.route.hint":"Ask how two semantic nodes connect in authored direction.","viewer.guide.map":"See the whole system","viewer.guide.map.hint":"Open Semantic Radar with a live viewport and stable nodes.","viewer.guide.lens":"Compare semantic kinds","viewer.guide.lens.hint":"Count roles, reveal their traffic, and compare direct authored links.","viewer.guide.story":"Play the guided story","viewer.guide.story.hint":"Walk the authored chapters and real relationships.","viewer.guide.present":"Enter Presentation Stage","viewer.guide.present.hint":"Give the live diagram the viewport without changing export.","viewer.guide.shortcuts":"Additional keyboard shortcuts","viewer.guide.shortcut.export":"Export","viewer.guide.shortcut.theme":"Theme","viewer.guide.shortcut.style":"Style","viewer.guide.shortcut.reset":"Reset","viewer.guide.shortcut.zoomIn":"Zoom in","viewer.guide.shortcut.zoomOut":"Zoom out","viewer.guide.shortcut.close":"Close","viewer.guide.facts":"{nodes} · {relationships} · {views}","viewer.guide.fact.node.one":"{count} semantic node","viewer.guide.fact.node.other":"{count} semantic nodes","viewer.guide.fact.relationship.one":"{count} relationship","viewer.guide.fact.relationship.other":"{count} relationships","viewer.guide.fact.view.one":"{count} guided view","viewer.guide.fact.view.other":"{count} guided views","viewer.guide.story.available.one":"Walk {count} authored chapter and its real relationships.","viewer.guide.story.available.other":"Walk {count} authored chapters and their real relationships.","viewer.guide.story.unavailable":"No authored guided story in this diagram.","viewer.guide.open":"Open diagram guide","viewer.guide.noStory":"This diagram has no authored guided story.","viewer.finder.title":"Find a node","viewer.finder.close":"Close node finder","viewer.finder.placeholder":"Search labels or IDs","viewer.finder.search":"Search diagram nodes","viewer.finder.results":"Diagram nodes","viewer.finder.empty":"No matching nodes","viewer.finder.result.focus":"Focus {label}","viewer.finder.result.routeStart":"Choose {label} as route start","viewer.finder.result.routeTarget":"Choose {label} as route destination, {links}","viewer.finder.status.empty":"No matching nodes","viewer.finder.status.count.one":"{count} matching node","viewer.finder.status.count.other":"{count} matching nodes","viewer.finder.noun.nodes":"nodes","viewer.finder.link.one":"{count} link","viewer.finder.link.other":"{count} links","viewer.finder.result.focus.one":"Focus {label}, {count} related connection","viewer.finder.result.focus.other":"Focus {label}, {count} related connections","viewer.finder.status.filtered":"{visible} of {available} {noun}","viewer.finder.status.all":"{available} {noun}","viewer.passport.eyebrow":"Semantic passport","viewer.passport.metadata":"Node metadata","viewer.passport.evidence":"Verified source evidence","viewer.passport.verified":"Verified source","viewer.passport.verificationScope":"Verified against local Git at the pinned revision. Remote access has not been checked.","viewer.passport.reach":"Authored reach","viewer.passport.reach.trace":"Trace authored reachability","viewer.passport.upstream":"Upstream","viewer.passport.downstream":"Downstream","viewer.passport.upstream.trace":"Trace upstream authored reachability","viewer.passport.downstream.trace":"Trace downstream authored reachability","viewer.passport.close":"Close semantic passport","viewer.passport.copy":"Copy link","viewer.passport.copy.focus":"Copy link to focused node","viewer.passport.relations":"Relations","viewer.passport.relations.show":"Show connected relationships","viewer.passport.relations.hide":"Hide connected relationships","viewer.passport.relations.list":"Connected relationships","viewer.passport.copyRelation":"Copy relation","viewer.passport.copyNode":"Copy node","viewer.passport.copyPinned":"Copy link to pinned relationship","viewer.passport.copySource":"Copy link to source node","viewer.passport.copy.focused.success":"Focused node link copied","viewer.passport.copy.pinned.success":"Pinned relationship link copied","viewer.passport.copy.focused.failed":"Could not copy focused node link","viewer.passport.copy.pinned.failed":"Could not copy pinned relationship link","viewer.passport.relationship.none":"No connected relationships","viewer.passport.relationship.count.one":"{count} relation","viewer.passport.relationship.count.other":"{count} relations","viewer.passport.relationship.show.one":"Show {count} connected relationship","viewer.passport.relationship.show.other":"Show {count} connected relationships","viewer.passport.relationship.summary":"{out} outgoing · {in} incoming{loops}","viewer.passport.relationship.loops":" · {count} loop","viewer.passport.relationship.explorer":"Direct relationship explorer","viewer.passport.relationship.help":"Use arrow keys to explore relationships. Press Enter or Space to pin details; Escape clears.","viewer.passport.relationship.loopsBack":"loops back","viewer.passport.relationship.connectsTo":"connects to","viewer.passport.relationship.connectsFrom":"connects from","viewer.passport.relationship.pinned":"Pinned relationship · {from} → {to} · {label}","viewer.passport.relationship.inspect":"Inspect relationship {index} of {total}: {from} to {to}, {label}. Press Enter for details.","viewer.passport.relationship.group.out":"Outgoing","viewer.passport.relationship.group.in":"Incoming","viewer.passport.relationship.group.loop":"Self loops","viewer.passport.relationship.row":"{group}: {relationship}, {neighbor}","viewer.passport.relationship.direction.out":"OUT →","viewer.passport.relationship.direction.in":"← IN","viewer.passport.relationship.direction.loop":"LOOP","viewer.passport.sourceCount.one":"{count} verified source reference","viewer.passport.sourceCount.other":"{count} verified source references","viewer.passport.sourceMarker":"SRC","viewer.passport.beacon.one":"{count} verified source; focus this node to inspect","viewer.passport.beacon.other":"{count} verified sources; focus this node to inspect","viewer.passport.repository.open":"Open verified repository revision {revision}","viewer.passport.source.open":"Open verified source {path} at revision {revision}","viewer.passport.source.openLink":"Open ↗","viewer.passport.reach.upstream.one":"Trace {count} upstream authored node","viewer.passport.reach.upstream.other":"Trace {count} upstream authored nodes","viewer.passport.reach.downstream.one":"Trace {count} downstream authored node","viewer.passport.reach.downstream.other":"Trace {count} downstream authored nodes","viewer.passport.reach.noUpstream":"No upstream authored nodes","viewer.passport.reach.noDownstream":"No downstream authored nodes","viewer.passport.reach.status":"{direction} · {nodes} nodes · {links} links · max {hops} hops","viewer.route.eyebrow":"Route probe","viewer.route.start":"Choose a start node","viewer.route.start.find":"Find start","viewer.route.start.find.aria":"Find a route start","viewer.route.copy":"Copy link","viewer.route.copy.aria":"Copy link to traced route","viewer.route.clear":"Clear","viewer.route.clear.aria":"Clear route probe","viewer.route.traced":"Traced route","viewer.route.pickTwo":"Pick two semantic nodes on the diagram","viewer.route.pickOne":"Pick a semantic node on the diagram","viewer.route.controls":"Route journey controls","viewer.route.previous":"Previous route position","viewer.route.play":"Play route journey","viewer.route.pause":"Pause route journey","viewer.route.replay":"Replay route journey","viewer.route.next":"Next route position","viewer.route.journey":"Journey","viewer.route.pause.label":"Pause","viewer.route.replay.label":"Replay","viewer.route.overview":"Overview","viewer.route.overview.aria":"Show complete route overview","viewer.route.instructions":"Choose the source, then the destination. Direction matters.","viewer.route.destination":"Choose a destination from {label}","viewer.route.destination.find":"Find target","viewer.route.destination.find.aria":"Find a reachable route destination","viewer.route.differentDestination":"Choose a different destination","viewer.route.distinct":"A route needs two distinct semantic nodes.","viewer.route.unreachable":"No directed route to {label}","viewer.route.unreachable.detail":"{target} is not reachable from {source}. Pick a highlighted destination.","viewer.route.start.instructions":"Select the source. The next step will reveal only directed destinations.","viewer.route.copy.success":"Traced route link copied","viewer.route.copy.failed":"Could not copy traced route link","viewer.route.position":"Route position {index} of {total}: {label}","viewer.route.step":"Step {index} of {total} · {phase} · {label}","viewer.route.motionRequired":"Automatic journey requires Live motion","viewer.route.trigger.clear":"Clear traced route","viewer.route.overview.status":"{nodes} · {hops} · shortest authored route","viewer.route.overview.node.one":"{count} node","viewer.route.overview.node.other":"{count} nodes","viewer.route.overview.hop.one":"{count} directed hop","viewer.route.overview.hop.other":"{count} directed hops","viewer.route.phase.playing":"Playing","viewer.route.phase.complete":"Complete","viewer.route.phase.inspecting":"Inspecting","viewer.route.destination.count.one":"{count} directed destination available. Pick a highlighted node.","viewer.route.destination.count.other":"{count} directed destinations available. Pick a highlighted node.","viewer.route.noOutgoing":"No outgoing route starts here. Clear and choose another source.","viewer.route.result.title":"{source} to {target}","viewer.route.finder.source.title":"Choose route start","viewer.route.finder.source.placeholder":"Search route sources","viewer.route.finder.source.empty":"No matching route sources","viewer.route.finder.source.results":"Nodes that can start a route","viewer.route.finder.source.noun":"route sources","viewer.route.finder.source.badge":"start","viewer.route.finder.target.title":"Destination from {label}","viewer.route.finder.target.placeholder":"Search reachable destinations","viewer.route.finder.target.empty":"No matching reachable destinations","viewer.route.finder.target.results":"Reachable route destinations","viewer.route.finder.target.noun":"reachable destinations","viewer.route.hop.one":"{count} hop","viewer.route.hop.other":"{count} hops","viewer.lens.eyebrow":"Semantic lens","viewer.lens.title":"Compare system roles","viewer.lens.close":"Close semantic lens","viewer.lens.instruction":"Choose up to two semantic kinds. One reveals its real traffic; two compare only direct authored relationships.","viewer.lens.kinds":"Semantic kinds","viewer.lens.choose":"Choose a kind to inspect its nodes and touching relationships.","viewer.lens.copy":"Copy link to semantic lens","viewer.lens.clear":"Clear semantic lens","viewer.lens.open":"Open semantic lens","viewer.lens.openActive":"Open active semantic lens","viewer.lens.legend":"Semantic legend","viewer.lens.legend.inspect.one":"Inspect {label}, {count} node","viewer.lens.legend.inspect.other":"Inspect {label}, {count} nodes","viewer.lens.kind.count.one":"{label}, {count} node","viewer.lens.kind.count.other":"{label}, {count} nodes","viewer.lens.compare.one":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationship","viewer.lens.compare.other":"{first} → {second}: {forward} · {second} → {first}: {reverse} · {count} direct relationships","viewer.lens.single":"{nodes} · {relationships} · connected peers remain visible","viewer.lens.node.one":"{count} {label} node","viewer.lens.node.other":"{count} {label} nodes","viewer.lens.relationship.one":"{count} touching relationship","viewer.lens.relationship.other":"{count} touching relationships","viewer.radar.title":"Semantic radar","viewer.radar.building":"Building overview","viewer.radar.openFull":"Open full semantic radar","viewer.radar.open":"Open radar","viewer.radar.close":"Close semantic radar","viewer.radar.surface":"Diagram overview. Click a node to focus it, or use arrow keys to pan.","viewer.radar.click":"Click node","viewer.radar.drag":"Drag to pan","viewer.radar.space":"Semantic radar needs more MAP space.","viewer.radar.nodes":"Semantic diagram radar nodes","viewer.radar.focus":"Focus {label} from Semantic Radar","viewer.radar.status":"{count} nodes · {viewport}","viewer.radar.fullMap":"{count} nodes · full map","viewer.radar.compacted":"Radar compacted to avoid covering the Semantic Passport or MAP controls.","viewer.radar.cancelWaiting":"Cancel semantic radar waiting for more MAP space","viewer.radar.needsSpace":"Semantic radar needs more visible MAP space","viewer.radar.viewport.full":"full map","viewer.radar.viewport.width":"{percent}% width","viewer.radar.viewport.scale":"{percent}% viewport","viewer.nav.controls":"Diagram view controls","viewer.nav.route":"Trace a directed route","viewer.nav.route.title":"Trace route (R)","viewer.nav.route.short":"PATH","viewer.nav.radar":"Open semantic radar","viewer.nav.radar.title":"Semantic radar (M)","viewer.nav.radar.short":"MAP","viewer.nav.lens":"Open semantic lens","viewer.nav.lens.title":"Semantic lens (L)","viewer.nav.lens.short":"LENS","viewer.nav.find":"Find a node","viewer.nav.find.title":"Find a node (/)","viewer.nav.guide":"Open diagram guide","viewer.nav.guide.title":"Diagram guide (?)","viewer.nav.zoomOut":"Zoom out","viewer.nav.zoomOut.title":"Zoom out (-)","viewer.nav.reset":"Reset diagram view","viewer.nav.reset.title":"Reset view (0)","viewer.nav.read":"READ","viewer.nav.zoomIn":"Zoom in","viewer.nav.zoomIn.title":"Zoom in (+)","viewer.nav.camera":"{hint}. Reset diagram view","viewer.nav.camera.title":"{semantic}{hint} · reset view (0)","viewer.nav.camera.semantic":"Semantic camera active · ","viewer.nav.level.map":"MAP","viewer.nav.level.read":"READ","viewer.nav.level.full":"FULL","viewer.nav.level.auto":"AUTO","viewer.nav.detail.map":"Zoom in to reveal relationship labels and node context","viewer.nav.detail.read":"Zoom in again to reveal tags and annotations","viewer.nav.detail.full":"Full diagram detail","viewer.intent.summary":"{label}. {out} outgoing, {in} incoming{loops}. {total} connections. Press Enter for details.","viewer.intent.loops":", {count} self loop","viewer.common.copied":"Copied","viewer.common.copyFailed":"Copy failed","viewer.common.copyLink":"Copy link","viewer.common.clear":"Clear","viewer.common.close":"Close"}}</script>
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
@@ -5130,9 +5200,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / PLATE 04">
-      <svg viewBox="0 0 1160 440" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
+      <svg viewBox="0 0 1160 535" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
         <title id="archify-diagram-title">HavenlyAI Runtime Architecture</title>
-        <desc id="archify-diagram-description">An architecture diagram generated by Archify.</desc>
+        <desc id="archify-diagram-description">An architecture diagram generated for HavenlyAI.</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -5155,263 +5225,352 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <!-- Background Grid -->
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        <!-- Boundaries (behind everything) -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="Client Boundary" x="216" y="186" width="398" height="228" rx="12" class="c-region" stroke-width="1"/>
+        <!-- Boundaries -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="Client Boundary" x="216" y="176" width="400" height="338" rx="12" class="c-region" stroke-width="1"/>
+        <text x="226" y="193" class="t-region" font-size="10" font-weight="600" fill="#64748b">Client Boundary (iOS / Android / Web)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="Supabase Cloud" x="216" y="56" width="398" height="98" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="Supabase Cloud &amp; Storage Vault" x="216" y="46" width="644" height="98" rx="12" class="c-region" stroke-width="1"/>
+        <text x="226" y="63" class="t-region" font-size="10" font-weight="600" fill="#64748b">Supabase Cloud &amp; Storage Vault</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="Cloud AI Tier" x="916" y="186" width="168" height="228" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="Cloud AI &amp; Neural Voice Tier" x="916" y="176" width="180" height="338" rx="12" class="c-region" stroke-width="1"/>
+        <text x="926" y="193" class="t-region" font-size="10" font-weight="600" fill="#64748b">Cloud AI &amp; Neural Voice</text>
 
-        <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="user" data-edge-to="client_ui" data-edge-label="voice / touch" data-edge-key="0" data-edge-id="user-to-client" data-composition-points="160,237;230,237" d="M 160 237 L 230 237" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="client_ui" data-edge-to="audio_vad" data-edge-label="mic buffer" data-edge-key="1" data-edge-id="client-to-audio" data-composition-points="360,237;460,237" d="M 360 237 L 460 237" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="audio_vad" data-edge-to="live_ws" data-edge-label="PCM stream" data-edge-key="2" data-edge-id="audio-to-ws" data-composition-points="600,237;690,237" d="M 600 237 L 690 237" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="live_ws" data-edge-to="gemini_live" data-edge-label="WebSocket" data-edge-key="3" data-edge-id="ws-to-gemini" data-composition-points="830,237;930,237" d="M 830 237 L 930 237" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="client_ui" data-edge-to="supa_auth" data-edge-label="auth session" data-edge-key="4" data-edge-id="client-auth-sync" data-composition-points="295,210;295,134" d="M 295 210 L 295 134" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="supa_auth" data-edge-to="supa_db" data-edge-label="token claims" data-edge-key="5" data-edge-id="auth-to-db" data-composition-points="360,107;460,107" d="M 360 107 L 460 107" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="audio_vad" data-edge-to="supa_db" data-edge-label="persist voice" data-edge-key="6" data-edge-id="audio-to-db" data-composition-points="530,210;530,134" d="M 530 210 L 530 134" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="client_ui" data-edge-to="state_store" data-edge-label="actions" data-edge-key="7" data-edge-id="client-to-store" data-composition-points="295,264;295,340" d="M 295 264 L 295 340" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="audio_vad" data-edge-to="safety_guard" data-edge-label="triage scan" data-edge-key="8" data-edge-id="audio-to-safety" data-composition-points="530,264;530,340" d="M 530 264 L 530 340" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="state_store" data-edge-to="safety_guard" data-edge-label="context" data-edge-key="9" data-edge-id="store-to-safety" data-composition-points="360,367;460,367" d="M 360 367 L 460 367" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="safety_guard" data-edge-to="rest_gateway" data-edge-label="filtered text" data-edge-key="10" data-edge-id="safety-to-gateway" data-composition-points="600,367;690,367" d="M 600 367 L 690 367" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="rest_gateway" data-edge-to="openrouter_hub" data-edge-label="fallback" data-edge-key="11" data-edge-id="gateway-to-openrouter" data-composition-points="830,367;930,367" d="M 830 367 L 930 367" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <!-- Connection paths -->
+        <path data-edge-from="user" data-edge-to="client_ui" data-edge-label="voice / touch" data-edge-key="0" data-edge-id="user-to-client" data-composition-points="160,227.0;230,227.0" d="M 160 227.0 L 230 227.0" class="c-edge-emphasis" stroke-width="1.5" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="client_ui" data-edge-to="audio_vad" data-edge-label="mic buffer" data-edge-key="1" data-edge-id="client-to-audio" data-composition-points="370,227.0;460,227.0" d="M 370 227.0 L 460 227.0" class="c-edge-emphasis" stroke-width="1.5" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="audio_vad" data-edge-to="live_ws" data-edge-label="24kHz PCM" data-edge-key="2" data-edge-id="audio-to-ws" data-composition-points="600,227.0;690,227.0" d="M 600 227.0 L 690 227.0" class="c-edge-emphasis" stroke-width="1.5" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="live_ws" data-edge-to="gemini_live" data-edge-label="WebSocket" data-edge-key="3" data-edge-id="ws-to-gemini" data-composition-points="830,227.0;930,227.0" d="M 830 227.0 L 930 227.0" class="c-edge-emphasis" stroke-width="1.5" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="client_ui" data-edge-to="supa_auth" data-edge-label="auth session" data-edge-key="4" data-edge-id="client-auth-sync" data-composition-points="300.0,200;300.0,124" d="M 300.0 200 L 300.0 124" class="c-edge-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="supa_auth" data-edge-to="supa_db" data-edge-label="token claims" data-edge-key="5" data-edge-id="auth-to-db" data-composition-points="370,97.0;460,97.0" d="M 370 97.0 L 460 97.0" class="c-edge-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="supa_db" data-edge-to="medical_storage" data-edge-label="storage RLS" data-edge-key="6" data-edge-id="db-to-storage" data-composition-points="600,97.0;690,97.0" d="M 600 97.0 L 690 97.0" class="c-edge-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="audio_vad" data-edge-to="supa_db" data-edge-label="persist voice" data-edge-key="7" data-edge-id="audio-to-db" data-composition-points="530.0,200;530.0,124" d="M 530.0 200 L 530.0 124" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="client_ui" data-edge-to="state_store" data-edge-label="actions" data-edge-key="8" data-edge-id="client-to-store" data-composition-points="300.0,254;300.0,320" d="M 300.0 254 L 300.0 320" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="audio_vad" data-edge-to="safety_guard" data-edge-label="triage scan" data-edge-key="9" data-edge-id="audio-to-safety" data-composition-points="530.0,254;530.0,320" d="M 530.0 254 L 530.0 320" class="c-edge-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="state_store" data-edge-to="safety_guard" data-edge-label="context FSM" data-edge-key="10" data-edge-id="store-to-safety" data-composition-points="370,347.0;460,347.0" d="M 370 347.0 L 460 347.0" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="safety_guard" data-edge-to="rest_gateway" data-edge-label="filtered text" data-edge-key="11" data-edge-id="safety-to-gateway" data-composition-points="600,347.0;690,347.0" d="M 600 347.0 L 690 347.0" class="c-edge-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="rest_gateway" data-edge-to="openrouter_hub" data-edge-label="fallback LLM" data-edge-key="12" data-edge-id="gateway-to-openrouter" data-composition-points="830,347.0;930,347.0" d="M 830 347.0 L 930 347.0" class="c-edge-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="state_store" data-edge-to="phq4_assessment" data-edge-label="intake baseline" data-edge-key="13" data-edge-id="store-to-phq4" data-composition-points="300.0,374;300.0,440" d="M 300.0 374 L 300.0 440" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="phq4_assessment" data-edge-to="mindful_gamification" data-edge-label="clinical score" data-edge-key="14" data-edge-id="phq4-to-gamification" data-composition-points="370,467.0;460,467.0" d="M 370 467.0 L 460 467.0" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="safety_guard" data-edge-to="mindful_gamification" data-edge-label="safety lock" data-edge-key="15" data-edge-id="safety-to-gamification" data-composition-points="530.0,374;530.0,440" d="M 530.0 374 L 530.0 440" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="mindful_gamification" data-edge-to="supa_db" data-edge-label="sync points" data-edge-key="16" data-edge-id="gamification-to-db" data-composition-points="530.0,440;530.0,124" d="M 530.0 440 L 530.0 124" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="openrouter_hub" data-edge-to="edge_tts" data-edge-label="speech synth" data-edge-key="17" data-edge-id="openrouter-to-tts" data-composition-points="1005.0,374;1005.0,440" d="M 1005.0 374 L 1005.0 440" class="c-edge" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="rest_gateway" data-edge-to="edge_tts" data-edge-label="edge trigger" data-edge-key="18" data-edge-id="gateway-to-tts" data-composition-points="760.0,374;930,467.0" d="M 760.0 374 L 760.0 467.0 L 930 467.0" class="c-edge-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+
+        <!-- Connection labels -->
+        <g data-detail="context" data-edge-from="user" data-edge-to="client_ui" data-edge-label="voice / touch" data-edge-key="0" data-edge-id="user-to-client">
+          <rect x="151.0" y="219.0" width="88" height="14" rx="3" class="c-mask"/>
+          <text x="195.0" y="228.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">voice / touch</text>
+        </g>
+        <g data-detail="context" data-edge-from="client_ui" data-edge-to="audio_vad" data-edge-label="mic buffer" data-edge-key="1" data-edge-id="client-to-audio">
+          <rect x="380.0" y="219.0" width="70" height="14" rx="3" class="c-mask"/>
+          <text x="415.0" y="228.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">mic buffer</text>
+        </g>
+        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="live_ws" data-edge-label="24kHz PCM" data-edge-key="2" data-edge-id="audio-to-ws">
+          <rect x="613.0" y="219.0" width="64" height="14" rx="3" class="c-mask"/>
+          <text x="645.0" y="228.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">24kHz PCM</text>
+        </g>
+        <g data-detail="context" data-edge-from="live_ws" data-edge-to="gemini_live" data-edge-label="WebSocket" data-edge-key="3" data-edge-id="ws-to-gemini">
+          <rect x="848.0" y="219.0" width="64" height="14" rx="3" class="c-mask"/>
+          <text x="880.0" y="228.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">WebSocket</text>
+        </g>
+        <g data-detail="context" data-edge-from="client_ui" data-edge-to="supa_auth" data-edge-label="auth session" data-edge-key="4" data-edge-id="client-auth-sync">
+          <rect x="259.0" y="154.0" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="300.0" y="163.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">auth session</text>
+        </g>
+        <g data-detail="context" data-edge-from="supa_auth" data-edge-to="supa_db" data-edge-label="token claims" data-edge-key="5" data-edge-id="auth-to-db">
+          <rect x="374.0" y="89.0" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="415.0" y="98.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">token claims</text>
+        </g>
+        <g data-detail="context" data-edge-from="supa_db" data-edge-to="medical_storage" data-edge-label="storage RLS" data-edge-key="6" data-edge-id="db-to-storage">
+          <rect x="607.0" y="89.0" width="76" height="14" rx="3" class="c-mask"/>
+          <text x="645.0" y="98.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">storage RLS</text>
+        </g>
+        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="supa_db" data-edge-label="persist voice" data-edge-key="7" data-edge-id="audio-to-db">
+          <rect x="486.0" y="154.0" width="88" height="14" rx="3" class="c-mask"/>
+          <text x="530.0" y="163.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">persist voice</text>
+        </g>
+        <g data-detail="context" data-edge-from="client_ui" data-edge-to="state_store" data-edge-label="actions" data-edge-key="8" data-edge-id="client-to-store">
+          <rect x="274.0" y="279.0" width="52" height="14" rx="3" class="c-mask"/>
+          <text x="300.0" y="288.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">actions</text>
+        </g>
+        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="safety_guard" data-edge-label="triage scan" data-edge-key="9" data-edge-id="audio-to-safety">
+          <rect x="492.0" y="279.0" width="76" height="14" rx="3" class="c-mask"/>
+          <text x="530.0" y="288.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">triage scan</text>
+        </g>
+        <g data-detail="context" data-edge-from="state_store" data-edge-to="safety_guard" data-edge-label="context FSM" data-edge-key="10" data-edge-id="store-to-safety">
+          <rect x="377.0" y="339.0" width="76" height="14" rx="3" class="c-mask"/>
+          <text x="415.0" y="348.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">context FSM</text>
+        </g>
+        <g data-detail="context" data-edge-from="safety_guard" data-edge-to="rest_gateway" data-edge-label="filtered text" data-edge-key="11" data-edge-id="safety-to-gateway">
+          <rect x="601.0" y="339.0" width="88" height="14" rx="3" class="c-mask"/>
+          <text x="645.0" y="348.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">filtered text</text>
+        </g>
+        <g data-detail="context" data-edge-from="rest_gateway" data-edge-to="openrouter_hub" data-edge-label="fallback LLM" data-edge-key="12" data-edge-id="gateway-to-openrouter">
+          <rect x="839.0" y="339.0" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="880.0" y="348.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">fallback LLM</text>
+        </g>
+        <g data-detail="context" data-edge-from="state_store" data-edge-to="phq4_assessment" data-edge-label="intake baseline" data-edge-key="13" data-edge-id="store-to-phq4">
+          <rect x="250.0" y="399.0" width="100" height="14" rx="3" class="c-mask"/>
+          <text x="300.0" y="408.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">intake baseline</text>
+        </g>
+        <g data-detail="context" data-edge-from="phq4_assessment" data-edge-to="mindful_gamification" data-edge-label="clinical score" data-edge-key="14" data-edge-id="phq4-to-gamification">
+          <rect x="368.0" y="459.0" width="94" height="14" rx="3" class="c-mask"/>
+          <text x="415.0" y="468.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">clinical score</text>
+        </g>
+        <g data-detail="context" data-edge-from="safety_guard" data-edge-to="mindful_gamification" data-edge-label="safety lock" data-edge-key="15" data-edge-id="safety-to-gamification">
+          <rect x="492.0" y="399.0" width="76" height="14" rx="3" class="c-mask"/>
+          <text x="530.0" y="408.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">safety lock</text>
+        </g>
+        <g data-detail="context" data-edge-from="mindful_gamification" data-edge-to="supa_db" data-edge-label="sync points" data-edge-key="16" data-edge-id="gamification-to-db">
+          <rect x="492.0" y="274.0" width="76" height="14" rx="3" class="c-mask"/>
+          <text x="530.0" y="283.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">sync points</text>
+        </g>
+        <g data-detail="context" data-edge-from="openrouter_hub" data-edge-to="edge_tts" data-edge-label="speech synth" data-edge-key="17" data-edge-id="openrouter-to-tts">
+          <rect x="964.0" y="399.0" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="1005.0" y="408.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">speech synth</text>
+        </g>
+        <g data-detail="context" data-edge-from="rest_gateway" data-edge-to="edge_tts" data-edge-label="edge trigger" data-edge-key="18" data-edge-id="gateway-to-tts">
+          <rect x="754.0" y="459.0" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="795.0" y="468.0" class="t-backend" font-size="7.5" font-weight="500" text-anchor="middle">edge trigger</text>
+        </g>
 
         <!-- Components -->
-        <g id="node-user" data-node-id="user" data-node-label="End User" tabindex="0" role="button" aria-label="Focus End User, voice &amp; somatic cues, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="voice &amp; somatic cues" data-node-context="Architecture component">
-          <title>End User · voice &amp; somatic cues · Architecture component</title>
-          <rect x="40" y="210" width="120" height="54" rx="6" class="c-mask"/>
-          <rect x="40" y="210" width="120" height="54" rx="6" class="c-external" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(46 216) scale(0.6875)">
+
+        <g id="node-user" data-node-id="user" data-node-label="End User" tabindex="0" role="button" aria-label="Focus End User, voice & somatic cues" aria-pressed="false" data-node-kind="external" data-node-sublabel="voice & somatic cues" data-node-tag="">
+          <title>End User · voice & somatic cues · </title>
+          <rect x="40" y="200" width="120" height="54" rx="6" class="c-mask"/>
+          <rect x="40" y="200" width="120" height="54" rx="6" class="c-external" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(46 206) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="100" y="235" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">End User</text>
-        <text data-detail="context" x="100" y="251" class="t-muted" font-size="9" text-anchor="middle">voice &amp; somatic cues</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="100.0" y="224" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">End User</text>
+          <text data-detail="context" x="100.0" y="238" class="t-muted" font-size="8" text-anchor="middle">voice & somatic cues</text>
+          <text data-detail="fine" x="100.0" y="248" class="t-external" font-size="7" text-anchor="middle"></text>
         </g>
 
-        <g id="node-client_ui" data-node-id="client_ui" data-node-label="Havenly Client UI" tabindex="0" role="button" aria-label="Focus Havenly Client UI, Expo Router &amp; Orb, Client Boundary, React" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Expo Router &amp; Orb" data-node-tag="mobile / web" data-node-context="Client Boundary" data-node-brand="React" data-node-brand-id="react" data-node-brand-status="preset" data-node-brand-source="https://github.com/facebook/create-react-app/blob/282c03f9525fdf8061ffa1ec50dce89296d916bd/test/fixtures/relative-paths/src/logo.svg">
-          <title>Havenly Client UI · Expo Router &amp; Orb · Client Boundary · mobile / web · React</title>
-          <rect x="230" y="210" width="130" height="54" rx="6" class="c-mask"/>
-          <rect x="230" y="210" width="130" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(236 216) scale(0.6875)">
+        <g id="node-client_ui" data-node-id="client_ui" data-node-label="Havenly Client UI" tabindex="0" role="button" aria-label="Focus Havenly Client UI, Expo 57 & Somatic Orb" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Expo 57 & Somatic Orb" data-node-tag="mobile / web">
+          <title>Havenly Client UI · Expo 57 & Somatic Orb · mobile / web</title>
+          <rect x="230" y="200" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="230" y="200" width="140" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(236 206) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <g aria-hidden="true" data-brand-mark="react" data-brand-title="React" data-brand-status="preset" data-brand-source="https://github.com/facebook/create-react-app/blob/282c03f9525fdf8061ffa1ec50dce89296d916bd/test/fixtures/relative-paths/src/logo.svg" class="brand-mark" transform="translate(338 216)">
+          <g aria-hidden="true" data-brand-mark="react" data-brand-title="React" data-brand-status="preset" class="brand-mark" transform="translate(348 206)">
             <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
-            <path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278zm-.005 1.09v.006c.225 0 .406.044.558.127.666.382.955 1.835.73 3.704-.054.46-.142.945-.25 1.44-.96-.236-2.006-.417-3.107-.534-.66-.905-1.345-1.727-2.035-2.447 1.592-1.48 3.087-2.292 4.105-2.295zm-9.77.02c1.012 0 2.514.808 4.11 2.28-.686.72-1.37 1.537-2.02 2.442-1.107.117-2.154.298-3.113.538-.112-.49-.195-.964-.254-1.42-.23-1.868.054-3.32.714-3.707.19-.09.4-.127.563-.132zm4.882 3.05c.455.468.91.992 1.36 1.564-.44-.02-.89-.034-1.345-.034-.46 0-.915.01-1.36.034.44-.572.895-1.096 1.345-1.565zM12 8.1c.74 0 1.477.034 2.202.093.406.582.802 1.203 1.183 1.86.372.64.71 1.29 1.018 1.946-.308.655-.646 1.31-1.013 1.95-.38.66-.773 1.288-1.18 1.87-.728.063-1.466.098-2.21.098-.74 0-1.477-.035-2.202-.093-.406-.582-.802-1.204-1.183-1.86-.372-.64-.71-1.29-1.018-1.946.303-.657.646-1.313 1.013-1.954.38-.66.773-1.286 1.18-1.868.728-.064 1.466-.098 2.21-.098zm-3.635.254c-.24.377-.48.763-.704 1.16-.225.39-.435.782-.635 1.174-.265-.656-.49-1.31-.676-1.947.64-.15 1.315-.283 2.015-.386zm7.26 0c.695.103 1.365.23 2.006.387-.18.632-.405 1.282-.66 1.933-.2-.39-.41-.783-.64-1.174-.225-.392-.465-.774-.705-1.146zm3.063.675c.484.15.944.317 1.375.498 1.732.74 2.852 1.708 2.852 2.476-.005.768-1.125 1.74-2.857 2.475-.42.18-.88.342-1.355.493-.28-.958-.646-1.956-1.1-2.98.45-1.017.81-2.01 1.085-2.964zm-13.395.004c.278.96.645 1.957 1.1 2.98-.45 1.017-.812 2.01-1.086 2.964-.484-.15-.944-.318-1.37-.5-1.732-.737-2.852-1.706-2.852-2.474 0-.768 1.12-1.742 2.852-2.476.42-.18.88-.342 1.356-.494zm11.678 4.28c.265.657.49 1.312.676 1.948-.64.157-1.316.29-2.016.39.24-.375.48-.762.705-1.158.225-.39.435-.788.636-1.18zm-9.945.02c.2.392.41.783.64 1.175.23.39.465.772.705 1.143-.695-.102-1.365-.23-2.006-.386.18-.63.406-1.282.66-1.933zM17.92 16.32c.112.493.2.968.254 1.423.23 1.868-.054 3.32-.714 3.708-.147.09-.338.128-.563.128-1.012 0-2.514-.807-4.11-2.28.686-.72 1.37-1.536 2.02-2.44 1.107-.118 2.154-.3 3.113-.54zm-11.83.01c.96.234 2.006.415 3.107.532.66.905 1.345 1.727 2.035 2.446-1.595 1.483-3.092 2.295-4.11 2.295-.22-.005-.406-.05-.553-.132-.666-.38-.955-1.834-.73-3.703.054-.46.142-.944.25-1.438zm4.56.64c.44.02.89.034 1.345.034.46 0 .915-.01 1.36-.034-.44.572-.895 1.095-1.345 1.565-.455-.47-.91-.993-1.36-1.565z" transform="translate(3 3) scale(0.4166666666666667)" fill="#61DAFB"/>
+            <path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278z" transform="translate(3 3) scale(0.4166666666666667)" fill="#61DAFB"/>
             <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="295" y="235" class="t-primary" font-size="8" font-weight="600" text-anchor="middle">Havenly Client UI</text>
-        <text data-detail="context" x="295" y="251" class="t-muted" font-size="9" text-anchor="middle">Expo Router &amp; Orb</text>
-        <text data-detail="fine" x="295" y="256" class="t-frontend" font-size="7" text-anchor="middle">mobile / web</text>
+          <text data-node-label="" data-detail-anchor="" x="300.0" y="224" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Havenly Client UI</text>
+          <text data-detail="context" x="300.0" y="238" class="t-muted" font-size="8" text-anchor="middle">Expo 57 & Somatic Orb</text>
+          <text data-detail="fine" x="300.0" y="248" class="t-frontend" font-size="7" text-anchor="middle">mobile / web</text>
         </g>
 
-        <g id="node-audio_vad" data-node-id="audio_vad" data-node-label="Audio &amp; VAD Engine" tabindex="0" role="button" aria-label="Focus Audio &amp; VAD Engine, PCM capture &amp; barge-in, Client Boundary" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="PCM capture &amp; barge-in" data-node-tag="client DSP" data-node-context="Client Boundary">
-          <title>Audio &amp; VAD Engine · PCM capture &amp; barge-in · Client Boundary · client DSP</title>
-          <rect x="460" y="210" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="460" y="210" width="140" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(466 216) scale(0.6875)">
+        <g id="node-audio_vad" data-node-id="audio_vad" data-node-label="Audio & VAD Engine" tabindex="0" role="button" aria-label="Focus Audio & VAD Engine, 24kHz PCM & barge-in" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="24kHz PCM & barge-in" data-node-tag="client DSP">
+          <title>Audio & VAD Engine · 24kHz PCM & barge-in · client DSP</title>
+          <rect x="460" y="200" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="460" y="200" width="140" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(466 206) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="530" y="235" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Audio &amp; VAD Engine</text>
-        <text data-detail="context" x="530" y="251" class="t-muted" font-size="9" text-anchor="middle">PCM capture &amp; barge-in</text>
-        <text data-detail="fine" x="530" y="256" class="t-frontend" font-size="7" text-anchor="middle">client DSP</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="530.0" y="224" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Audio & VAD Engine</text>
+          <text data-detail="context" x="530.0" y="238" class="t-muted" font-size="8" text-anchor="middle">24kHz PCM & barge-in</text>
+          <text data-detail="fine" x="530.0" y="248" class="t-frontend" font-size="7" text-anchor="middle">client DSP</text>
         </g>
 
-        <g id="node-live_ws" data-node-id="live_ws" data-node-label="Live WebSocket" tabindex="0" role="button" aria-label="Focus Live WebSocket, BidiGenerateContent, Architecture component" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="BidiGenerateContent" data-node-tag="full-duplex" data-node-context="Architecture component">
-          <title>Live WebSocket · BidiGenerateContent · Architecture component · full-duplex</title>
-          <rect x="690" y="210" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="690" y="210" width="140" height="54" rx="6" class="c-messagebus" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(696 216) scale(0.6875)">
+        <g id="node-live_ws" data-node-id="live_ws" data-node-label="Live WebSocket" tabindex="0" role="button" aria-label="Focus Live WebSocket, BidiGenerateContent" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="BidiGenerateContent" data-node-tag="full-duplex">
+          <title>Live WebSocket · BidiGenerateContent · full-duplex</title>
+          <rect x="690" y="200" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="690" y="200" width="140" height="54" rx="6" class="c-messagebus" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(696 206) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="760" y="235" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Live WebSocket</text>
-        <text data-detail="context" x="760" y="251" class="t-muted" font-size="9" text-anchor="middle">BidiGenerateContent</text>
-        <text data-detail="fine" x="760" y="256" class="t-messagebus" font-size="7" text-anchor="middle">full-duplex</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="760.0" y="224" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Live WebSocket</text>
+          <text data-detail="context" x="760.0" y="238" class="t-muted" font-size="8" text-anchor="middle">BidiGenerateContent</text>
+          <text data-detail="fine" x="760.0" y="248" class="t-messagebus" font-size="7" text-anchor="middle">full-duplex</text>
         </g>
 
-        <g id="node-gemini_live" data-node-id="gemini_live" data-node-label="Google Gemini 2.0" tabindex="0" role="button" aria-label="Focus Google Gemini 2.0, Multimodal Live API, Cloud AI Tier, Google Gemini" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Multimodal Live API" data-node-tag="voice model" data-node-context="Cloud AI Tier" data-node-brand="Google Gemini" data-node-brand-id="google-gemini" data-node-brand-status="preset" data-node-brand-source="https://gemini.google.com">
-          <title>Google Gemini 2.0 · Multimodal Live API · Cloud AI Tier · voice model · Google Gemini</title>
-          <rect x="930" y="210" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="930" y="210" width="140" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(936 216) scale(0.6875)">
+        <g id="node-gemini_live" data-node-id="gemini_live" data-node-label="Google Gemini 2.0" tabindex="0" role="button" aria-label="Focus Google Gemini 2.0, Aoede / Kore Live voice" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Aoede / Kore Live voice" data-node-tag="voice model">
+          <title>Google Gemini 2.0 · Aoede / Kore Live voice · voice model</title>
+          <rect x="930" y="200" width="150" height="54" rx="6" class="c-mask"/>
+          <rect x="930" y="200" width="150" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(936 206) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <g aria-hidden="true" data-brand-mark="google-gemini" data-brand-title="Google Gemini" data-brand-status="preset" data-brand-source="https://gemini.google.com" class="brand-mark" transform="translate(1048 216)">
+          <g aria-hidden="true" data-brand-mark="google-gemini" data-brand-title="Google Gemini" data-brand-status="preset" class="brand-mark" transform="translate(1058 206)">
             <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
-            <path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81" transform="translate(3 3) scale(0.4166666666666667)" fill="#8E75B2"/>
+            <path d="M12.78 1.17c-.3-1.56-2.26-1.56-2.56 0C8.75 8.78 7.78 9.75.17 11.22c-1.56.3-1.56 2.26 0 2.56 7.61 1.47 8.58 2.44 10.05 10.05.3 1.56 2.26 1.56 2.56 0 1.47-7.61 2.44-8.58 10.05-10.05 1.56-.3 1.56-2.26 0-2.56-7.61-1.47-8.58-2.44-10.05-10.05z" transform="translate(3 3) scale(0.4166666666666667)" fill="#4285F4"/>
             <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1000" y="235" class="t-primary" font-size="8.2" font-weight="600" text-anchor="middle">Google Gemini 2.0</text>
-        <text data-detail="context" x="1000" y="251" class="t-muted" font-size="9" text-anchor="middle">Multimodal Live API</text>
-        <text data-detail="fine" x="1000" y="256" class="t-cloud" font-size="7" text-anchor="middle">voice model</text>
+          <text data-node-label="" data-detail-anchor="" x="1005.0" y="224" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Google Gemini 2.0</text>
+          <text data-detail="context" x="1005.0" y="238" class="t-muted" font-size="8" text-anchor="middle">Aoede / Kore Live voice</text>
+          <text data-detail="fine" x="1005.0" y="248" class="t-cloud" font-size="7" text-anchor="middle">voice model</text>
         </g>
 
-        <g id="node-supa_auth" data-node-id="supa_auth" data-node-label="Supabase Auth" tabindex="0" role="button" aria-label="Focus Supabase Auth, JWT &amp; SecureStore, Supabase Cloud, Supabase" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT &amp; SecureStore" data-node-tag="identity" data-node-context="Supabase Cloud" data-node-brand="Supabase" data-node-brand-id="supabase" data-node-brand-status="preset" data-node-brand-source="https://github.com/supabase/supabase/blob/4031a7549f5d46da7bc79c01d56be4177dc7c114/packages/common/assets/images/supabase-logo-wordmark--light.svg">
-          <title>Supabase Auth · JWT &amp; SecureStore · Supabase Cloud · identity · Supabase</title>
-          <rect x="230" y="80" width="130" height="54" rx="6" class="c-mask"/>
-          <rect x="230" y="80" width="130" height="54" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(236 86) scale(0.6875)">
+        <g id="node-supa_auth" data-node-id="supa_auth" data-node-label="Supabase Auth" tabindex="0" role="button" aria-label="Focus Supabase Auth, JWT & SecureStore" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT & SecureStore" data-node-tag="identity">
+          <title>Supabase Auth · JWT & SecureStore · identity</title>
+          <rect x="230" y="70" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="230" y="70" width="140" height="54" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(236 76) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <g aria-hidden="true" data-brand-mark="supabase" data-brand-title="Supabase" data-brand-status="preset" data-brand-source="https://github.com/supabase/supabase/blob/4031a7549f5d46da7bc79c01d56be4177dc7c114/packages/common/assets/images/supabase-logo-wordmark--light.svg" class="brand-mark" transform="translate(338 86)">
+          <g aria-hidden="true" data-brand-mark="supabase" data-brand-title="Supabase" data-brand-status="preset" class="brand-mark" transform="translate(348 76)">
             <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
-            <path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z" transform="translate(3 3) scale(0.4166666666666667)" fill="#3FCF8E"/>
+            <path d="M11.9 1.036c.645-.79 1.884-.336 1.884.693V10.23h7.94c1.172 0 1.815 1.365 1.071 2.276L12.1 22.964c-.645.79-1.884.336-1.884-.693V13.77H2.276c-1.172 0-1.815-1.365-1.071-2.276L11.9 1.036Z" transform="translate(3 3) scale(0.4166666666666667)" fill="#3ECF8E"/>
             <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="295" y="105" class="t-primary" font-size="9.4" font-weight="600" text-anchor="middle">Supabase Auth</text>
-        <text data-detail="context" x="295" y="121" class="t-muted" font-size="9" text-anchor="middle">JWT &amp; SecureStore</text>
-        <text data-detail="fine" x="295" y="126" class="t-security" font-size="7" text-anchor="middle">identity</text>
+          <text data-node-label="" data-detail-anchor="" x="300.0" y="94" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Supabase Auth</text>
+          <text data-detail="context" x="300.0" y="108" class="t-muted" font-size="8" text-anchor="middle">JWT & SecureStore</text>
+          <text data-detail="fine" x="300.0" y="118" class="t-security" font-size="7" text-anchor="middle">identity</text>
         </g>
 
-        <g id="node-supa_db" data-node-id="supa_db" data-node-label="PostgreSQL DB" tabindex="0" role="button" aria-label="Focus PostgreSQL DB, Supabase RLS tables, Supabase Cloud, PostgreSQL" aria-pressed="false" data-node-kind="database" data-node-sublabel="Supabase RLS tables" data-node-tag="durable state" data-node-context="Supabase Cloud" data-node-brand="PostgreSQL" data-node-brand-id="postgresql" data-node-brand-status="preset" data-node-brand-source="https://wiki.postgresql.org/wiki/Logo">
-          <title>PostgreSQL DB · Supabase RLS tables · Supabase Cloud · durable state · PostgreSQL</title>
-          <rect x="460" y="80" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="460" y="80" width="140" height="54" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(466 86) scale(0.6875)">
+        <g id="node-supa_db" data-node-id="supa_db" data-node-label="PostgreSQL DB" tabindex="0" role="button" aria-label="Focus PostgreSQL DB, RLS & partial index" aria-pressed="false" data-node-kind="database" data-node-sublabel="RLS & partial index" data-node-tag="archival state">
+          <title>PostgreSQL DB · RLS & partial index · archival state</title>
+          <rect x="460" y="70" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="460" y="70" width="140" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(466 76) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <g aria-hidden="true" data-brand-mark="postgresql" data-brand-title="PostgreSQL" data-brand-status="preset" data-brand-source="https://wiki.postgresql.org/wiki/Logo" class="brand-mark" transform="translate(578 86)">
+          <g aria-hidden="true" data-brand-mark="postgresql" data-brand-title="PostgreSQL" data-brand-status="preset" class="brand-mark" transform="translate(578 76)">
             <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
-            <path d="M23.5594 14.7228a.5269.5269 0 0 0-.0563-.1191c-.139-.2632-.4768-.3418-1.0074-.2321-1.6533.3411-2.2935.1312-2.5256-.0191 1.342-2.0482 2.445-4.522 3.0411-6.8297.2714-1.0507.7982-3.5237.1222-4.7316a1.5641 1.5641 0 0 0-.1509-.235C21.6931.9086 19.8007.0248 17.5099.0005c-1.4947-.0158-2.7705.3461-3.1161.4794a9.449 9.449 0 0 0-.5159-.0816 8.044 8.044 0 0 0-1.3114-.1278c-1.1822-.0184-2.2038.2642-3.0498.8406-.8573-.3211-4.7888-1.645-7.2219.0788C.9359 2.1526.3086 3.8733.4302 6.3043c.0409.818.5069 3.334 1.2423 5.7436.4598 1.5065.9387 2.7019 1.4334 3.582.553.9942 1.1259 1.5933 1.7143 1.7895.4474.1491 1.1327.1441 1.8581-.7279.8012-.9635 1.5903-1.8258 1.9446-2.2069.4351.2355.9064.3625 1.39.3772a.0569.0569 0 0 0 .0004.0041 11.0312 11.0312 0 0 0-.2472.3054c-.3389.4302-.4094.5197-1.5002.7443-.3102.064-1.1344.2339-1.1464.8115-.0025.1224.0329.2309.0919.3268.2269.4231.9216.6097 1.015.6331 1.3345.3335 2.5044.092 3.3714-.6787-.017 2.231.0775 4.4174.3454 5.0874.2212.5529.7618 1.9045 2.4692 1.9043.2505 0 .5263-.0291.8296-.0941 1.7819-.3821 2.5557-1.1696 2.855-2.9059.1503-.8707.4016-2.8753.5388-4.1012.0169-.0703.0357-.1207.057-.1362.0007-.0005.0697-.0471.4272.0307a.3673.3673 0 0 0 .0443.0068l.2539.0223.0149.001c.8468.0384 1.9114-.1426 2.5312-.4308.6438-.2988 1.8057-1.0323 1.5951-1.6698zM2.371 11.8765c-.7435-2.4358-1.1779-4.8851-1.2123-5.5719-.1086-2.1714.4171-3.6829 1.5623-4.4927 1.8367-1.2986 4.8398-.5408 6.108-.13-.0032.0032-.0066.0061-.0098.0094-2.0238 2.044-1.9758 5.536-1.9708 5.7495-.0002.0823.0066.1989.0162.3593.0348.5873.0996 1.6804-.0735 2.9184-.1609 1.1504.1937 2.2764.9728 3.0892.0806.0841.1648.1631.2518.2374-.3468.3714-1.1004 1.1926-1.9025 2.1576-.5677.6825-.9597.5517-1.0886.5087-.3919-.1307-.813-.5871-1.2381-1.3223-.4796-.839-.9635-2.0317-1.4155-3.5126zm6.0072 5.0871c-.1711-.0428-.3271-.1132-.4322-.1772.0889-.0394.2374-.0902.4833-.1409 1.2833-.2641 1.4815-.4506 1.9143-1.0002.0992-.126.2116-.2687.3673-.4426a.3549.3549 0 0 0 .0737-.1298c.1708-.1513.2724-.1099.4369-.0417.156.0646.3078.26.3695.4752.0291.1016.0619.2945-.0452.4444-.9043 1.2658-2.2216 1.2494-3.1676 1.0128zm2.094-3.988-.0525.141c-.133.3566-.2567.6881-.3334 1.003-.6674-.0021-1.3168-.2872-1.8105-.8024-.6279-.6551-.9131-1.5664-.7825-2.5004.1828-1.3079.1153-2.4468.079-3.0586-.005-.0857-.0095-.1607-.0122-.2199.2957-.2621 1.6659-.9962 2.6429-.7724.4459.1022.7176.4057.8305.928.5846 2.7038.0774 3.8307-.3302 4.7363-.084.1866-.1633.3629-.2311.5454zm7.3637 4.5725c-.0169.1768-.0358.376-.0618.5959l-.146.4383a.3547.3547 0 0 0-.0182.1077c-.0059.4747-.054.6489-.115.8693-.0634.2292-.1353.4891-.1794 1.0575-.11 1.4143-.8782 2.2267-2.4172 2.5565-1.5155.3251-1.7843-.4968-2.0212-1.2217a6.5824 6.5824 0 0 0-.0769-.2266c-.2154-.5858-.1911-1.4119-.1574-2.5551.0165-.5612-.0249-1.9013-.3302-2.6462.0044-.2932.0106-.5909.019-.8918a.3529.3529 0 0 0-.0153-.1126 1.4927 1.4927 0 0 0-.0439-.208c-.1226-.4283-.4213-.7866-.7797-.9351-.1424-.059-.4038-.1672-.7178-.0869.067-.276.1831-.5875.309-.9249l.0529-.142c.0595-.16.134-.3257.213-.5012.4265-.9476 1.0106-2.2453.3766-5.1772-.2374-1.0981-1.0304-1.6343-2.2324-1.5098-.7207.0746-1.3799.3654-1.7088.5321a5.6716 5.6716 0 0 0-.1958.1041c.0918-1.1064.4386-3.1741 1.7357-4.4823a4.0306 4.0306 0 0 1 .3033-.276.3532.3532 0 0 0 .1447-.0644c.7524-.5706 1.6945-.8506 2.802-.8325.4091.0067.8017.0339 1.1742.081 1.939.3544 3.2439 1.4468 4.0359 2.3827.8143.9623 1.2552 1.9315 1.4312 2.4543-1.3232-.1346-2.2234.1268-2.6797.779-.9926 1.4189.543 4.1729 1.2811 5.4964.1353.2426.2522.4522.2889.5413.2403.5825.5515.9713.7787 1.2552.0696.087.1372.1714.1885.245-.4008.1155-1.1208.3825-1.0552 1.717-.0123.1563-.0423.4469-.0834.8148-.0461.2077-.0702.4603-.0994.7662zm.8905-1.6211c-.0405-.8316.2691-.9185.5967-1.0105a2.8566 2.8566 0 0 0 .135-.0406 1.202 1.202 0 0 0 .1342.103c.5703.3765 1.5823.4213 3.0068.1344-.2016.1769-.5189.3994-.9533.6011-.4098.1903-1.0957.333-1.7473.3636-.7197.0336-1.0859-.0807-1.1721-.151zm.5695-9.2712c-.0059.3508-.0542.6692-.1054 1.0017-.055.3576-.112.7274-.1264 1.1762-.0142.4368.0404.8909.0932 1.3301.1066.887.216 1.8003-.2075 2.7014a3.5272 3.5272 0 0 1-.1876-.3856c-.0527-.1276-.1669-.3326-.3251-.6162-.6156-1.1041-2.0574-3.6896-1.3193-4.7446.3795-.5427 1.3408-.5661 2.1781-.463zm.2284 7.0137a12.3762 12.3762 0 0 0-.0853-.1074l-.0355-.0444c.7262-1.1995.5842-2.3862.4578-3.4385-.0519-.4318-.1009-.8396-.0885-1.2226.0129-.4061.0666-.7543.1185-1.0911.0639-.415.1288-.8443.1109-1.3505.0134-.0531.0188-.1158.0118-.1902-.0457-.4855-.5999-1.938-1.7294-3.253-.6076-.7073-1.4896-1.4972-2.6889-2.0395.5251-.1066 1.2328-.2035 2.0244-.1859 2.0515.0456 3.6746.8135 4.8242 2.2824a.908.908 0 0 1 .0667.1002c.7231 1.3556-.2762 6.2751-2.9867 10.5405zm-8.8166-6.1162c-.025.1794-.3089.4225-.6211.4225a.5821.5821 0 0 1-.0809-.0056c-.1873-.026-.3765-.144-.5059-.3156-.0458-.0605-.1203-.178-.1055-.2844.0055-.0401.0261-.0985.0925-.1488.1182-.0894.3518-.1226.6096-.0867.3163.0441.6426.1938.6113.4186zm7.9305-.4114c.0111.0792-.049.201-.1531.3102-.0683.0717-.212.1961-.4079.2232a.5456.5456 0 0 1-.075.0052c-.2935 0-.5414-.2344-.5607-.3717-.024-.1765.2641-.3106.5611-.352.297-.0414.6111.0088.6356.1851z" transform="translate(3 3) scale(0.4166666666666667)" fill="#4169E1"/>
+            <path d="M11.94 0C5.35 0 0 5.35 0 11.94c0 6.6 5.35 11.94 11.94 11.94 6.6 0 11.94-5.35 11.94-11.94C23.88 5.35 18.53 0 11.94 0zm0 3.23c2.4 0 4.35 1.95 4.35 4.35 0 2.4-1.95 4.36-4.35 4.36-2.4 0-4.36-1.95-4.36-4.36 0-2.4 1.95-4.35 4.36-4.35z" transform="translate(3 3) scale(0.4166666666666667)" fill="#336791"/>
             <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="530" y="105" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">PostgreSQL DB</text>
-        <text data-detail="context" x="530" y="121" class="t-muted" font-size="9" text-anchor="middle">Supabase RLS tables</text>
-        <text data-detail="fine" x="530" y="126" class="t-database" font-size="7" text-anchor="middle">durable state</text>
+          <text data-node-label="" data-detail-anchor="" x="530.0" y="94" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">PostgreSQL DB</text>
+          <text data-detail="context" x="530.0" y="108" class="t-muted" font-size="8" text-anchor="middle">RLS & partial index</text>
+          <text data-detail="fine" x="530.0" y="118" class="t-database" font-size="7" text-anchor="middle">archival state</text>
         </g>
 
-        <g id="node-state_store" data-node-id="state_store" data-node-label="Zustand State Store" tabindex="0" role="button" aria-label="Focus Zustand State Store, session &amp; memory FSM, Client Boundary" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="session &amp; memory FSM" data-node-tag="local state" data-node-context="Client Boundary">
-          <title>Zustand State Store · session &amp; memory FSM · Client Boundary · local state</title>
-          <rect x="230" y="340" width="130" height="54" rx="6" class="c-mask"/>
-          <rect x="230" y="340" width="130" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(236 346) scale(0.6875)">
+        <g id="node-medical_storage" data-node-id="medical_storage" data-node-label="Medical Vault (PDF)" tabindex="0" role="button" aria-label="Focus Medical Vault (PDF), Supabase Storage RLS" aria-pressed="false" data-node-kind="database" data-node-sublabel="Supabase Storage RLS" data-node-tag="private bucket">
+          <title>Medical Vault (PDF) · Supabase Storage RLS · private bucket</title>
+          <rect x="690" y="70" width="150" height="54" rx="6" class="c-mask"/>
+          <rect x="690" y="70" width="150" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(696 76) scale(0.6875)">
+            <ellipse cx="8" cy="4" rx="5" ry="2"/>
+            <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
+          </g>
+          <g aria-hidden="true" data-brand-mark="supabase" data-brand-title="Supabase" data-brand-status="preset" class="brand-mark" transform="translate(818 76)">
+            <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
+            <path d="M11.9 1.036c.645-.79 1.884-.336 1.884.693V10.23h7.94c1.172 0 1.815 1.365 1.071 2.276L12.1 22.964c-.645.79-1.884.336-1.884-.693V13.77H2.276c-1.172 0-1.815-1.365-1.071-2.276L11.9 1.036Z" transform="translate(3 3) scale(0.4166666666666667)" fill="#3ECF8E"/>
+            <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="765.0" y="94" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Medical Vault (PDF)</text>
+          <text data-detail="context" x="765.0" y="108" class="t-muted" font-size="8" text-anchor="middle">Supabase Storage RLS</text>
+          <text data-detail="fine" x="765.0" y="118" class="t-database" font-size="7" text-anchor="middle">private bucket</text>
+        </g>
+
+        <g id="node-state_store" data-node-id="state_store" data-node-label="Zustand State Store" tabindex="0" role="button" aria-label="Focus Zustand State Store, session & gamification" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="session & gamification" data-node-tag="local state">
+          <title>Zustand State Store · session & gamification · local state</title>
+          <rect x="230" y="320" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="230" y="320" width="140" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(236 326) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="295" y="365" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Zustand State Store</text>
-        <text data-detail="context" x="295" y="381" class="t-muted" font-size="9" text-anchor="middle">session &amp; memory FSM</text>
-        <text data-detail="fine" x="295" y="386" class="t-frontend" font-size="7" text-anchor="middle">local state</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="300.0" y="344" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Zustand State Store</text>
+          <text data-detail="context" x="300.0" y="358" class="t-muted" font-size="8" text-anchor="middle">session & gamification</text>
+          <text data-detail="fine" x="300.0" y="368" class="t-frontend" font-size="7" text-anchor="middle">local state</text>
         </g>
 
-        <g id="node-safety_guard" data-node-id="safety_guard" data-node-label="Crisis Triage Shield" tabindex="0" role="button" aria-label="Focus Crisis Triage Shield, rule engine &amp; hotlines, Client Boundary" aria-pressed="false" data-node-kind="security" data-node-sublabel="rule engine &amp; hotlines" data-node-tag="fail-closed" data-node-context="Client Boundary">
-          <title>Crisis Triage Shield · rule engine &amp; hotlines · Client Boundary · fail-closed</title>
-          <rect x="460" y="340" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="460" y="340" width="140" height="54" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(466 346) scale(0.6875)">
+        <g id="node-safety_guard" data-node-id="safety_guard" data-node-label="Crisis Triage Shield" tabindex="0" role="button" aria-label="Focus Crisis Triage Shield, deterministic 988 triage" aria-pressed="false" data-node-kind="security" data-node-sublabel="deterministic 988 triage" data-node-tag="fail-closed">
+          <title>Crisis Triage Shield · deterministic 988 triage · fail-closed</title>
+          <rect x="460" y="320" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="460" y="320" width="140" height="54" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(466 326) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="530" y="365" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Crisis Triage Shield</text>
-        <text data-detail="context" x="530" y="381" class="t-muted" font-size="9" text-anchor="middle">rule engine &amp; hotlines</text>
-        <text data-detail="fine" x="530" y="386" class="t-security" font-size="7" text-anchor="middle">fail-closed</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="530.0" y="344" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Crisis Triage Shield</text>
+          <text data-detail="context" x="530.0" y="358" class="t-muted" font-size="8" text-anchor="middle">deterministic 988 triage</text>
+          <text data-detail="fine" x="530.0" y="368" class="t-security" font-size="7" text-anchor="middle">fail-closed</text>
         </g>
 
-        <g id="node-rest_gateway" data-node-id="rest_gateway" data-node-label="AI Gateway" tabindex="0" role="button" aria-label="Focus AI Gateway, HTTPS multi-provider, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="HTTPS multi-provider" data-node-tag="text &amp; sync" data-node-context="Architecture component">
-          <title>AI Gateway · HTTPS multi-provider · Architecture component · text &amp; sync</title>
-          <rect x="690" y="340" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="690" y="340" width="140" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(696 346) scale(0.6875)">
+        <g id="node-rest_gateway" data-node-id="rest_gateway" data-node-label="AI Gateway" tabindex="0" role="button" aria-label="Focus AI Gateway, HTTPS multi-provider" aria-pressed="false" data-node-kind="backend" data-node-sublabel="HTTPS multi-provider" data-node-tag="text & sync">
+          <title>AI Gateway · HTTPS multi-provider · text & sync</title>
+          <rect x="690" y="320" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="690" y="320" width="140" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(696 326) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="760" y="365" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">AI Gateway</text>
-        <text data-detail="context" x="760" y="381" class="t-muted" font-size="9" text-anchor="middle">HTTPS multi-provider</text>
-        <text data-detail="fine" x="760" y="386" class="t-backend" font-size="7" text-anchor="middle">text &amp; sync</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="760.0" y="344" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">AI Gateway</text>
+          <text data-detail="context" x="760.0" y="358" class="t-muted" font-size="8" text-anchor="middle">HTTPS multi-provider</text>
+          <text data-detail="fine" x="760.0" y="368" class="t-backend" font-size="7" text-anchor="middle">text & sync</text>
         </g>
 
-        <g id="node-openrouter_hub" data-node-id="openrouter_hub" data-node-label="OpenRouter Hub" tabindex="0" role="button" aria-label="Focus OpenRouter Hub, Gemma/Qwen free tier, Cloud AI Tier" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Gemma/Qwen free tier" data-node-tag="fallback LLMs" data-node-context="Cloud AI Tier">
-          <title>OpenRouter Hub · Gemma/Qwen free tier · Cloud AI Tier · fallback LLMs</title>
-          <rect x="930" y="340" width="140" height="54" rx="6" class="c-mask"/>
-          <rect x="930" y="340" width="140" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(936 346) scale(0.6875)">
+        <g id="node-openrouter_hub" data-node-id="openrouter_hub" data-node-label="OpenRouter Hub" tabindex="0" role="button" aria-label="Focus OpenRouter Hub, Gemma/Qwen free tier" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="Gemma/Qwen free tier" data-node-tag="fallback LLMs">
+          <title>OpenRouter Hub · Gemma/Qwen free tier · fallback LLMs</title>
+          <rect x="930" y="320" width="150" height="54" rx="6" class="c-mask"/>
+          <rect x="930" y="320" width="150" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(936 326) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1000" y="365" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">OpenRouter Hub</text>
-        <text data-detail="context" x="1000" y="381" class="t-muted" font-size="9" text-anchor="middle">Gemma/Qwen free tier</text>
-        <text data-detail="fine" x="1000" y="386" class="t-cloud" font-size="7" text-anchor="middle">fallback LLMs</text>
+          
+          <text data-node-label="" data-detail-anchor="" x="1005.0" y="344" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">OpenRouter Hub</text>
+          <text data-detail="context" x="1005.0" y="358" class="t-muted" font-size="8" text-anchor="middle">Gemma/Qwen free tier</text>
+          <text data-detail="fine" x="1005.0" y="368" class="t-cloud" font-size="7" text-anchor="middle">fallback LLMs</text>
         </g>
 
-        <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="user" data-edge-to="client_ui" data-edge-label="voice / touch" data-edge-key="0" data-edge-id="user-to-client">
-          <rect x="158.8" y="217" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="195" y="227" class="t-backend" font-size="8" text-anchor="middle">voice / touch</text>
-        </g>
-        <g data-detail="context" data-edge-from="client_ui" data-edge-to="audio_vad" data-edge-label="mic buffer" data-edge-key="1" data-edge-id="client-to-audio">
-          <rect x="381" y="217" width="58" height="14" rx="3" class="c-mask"/>
-          <text x="410" y="227" class="t-backend" font-size="8" text-anchor="middle">mic buffer</text>
-        </g>
-        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="live_ws" data-edge-label="PCM stream" data-edge-key="2" data-edge-id="audio-to-ws">
-          <rect x="616" y="217" width="58" height="14" rx="3" class="c-mask"/>
-          <text x="645" y="227" class="t-backend" font-size="8" text-anchor="middle">PCM stream</text>
-        </g>
-        <g data-detail="context" data-edge-from="live_ws" data-edge-to="gemini_live" data-edge-label="WebSocket" data-edge-key="3" data-edge-id="ws-to-gemini">
-          <rect x="853.4" y="217" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="880" y="227" class="t-backend" font-size="8" text-anchor="middle">WebSocket</text>
-        </g>
-        <g data-detail="context" data-edge-from="client_ui" data-edge-to="supa_auth" data-edge-label="auth session" data-edge-key="4" data-edge-id="client-auth-sync">
-          <rect x="261.2" y="174" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="295" y="184" class="t-security" font-size="8" text-anchor="middle">auth session</text>
-        </g>
-        <g data-detail="context" data-edge-from="supa_auth" data-edge-to="supa_db" data-edge-label="token claims" data-edge-key="5" data-edge-id="auth-to-db">
-          <rect x="376.2" y="87" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="410" y="97" class="t-security" font-size="8" text-anchor="middle">token claims</text>
-        </g>
-        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="supa_db" data-edge-label="persist voice" data-edge-key="6" data-edge-id="audio-to-db">
-          <rect x="493.8" y="174" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="530" y="184" class="t-muted" font-size="8" text-anchor="middle">persist voice</text>
-        </g>
-        <g data-detail="context" data-edge-from="client_ui" data-edge-to="state_store" data-edge-label="actions" data-edge-key="7" data-edge-id="client-to-store">
-          <rect x="273.2" y="292" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="295" y="302" class="t-muted" font-size="8" text-anchor="middle">actions</text>
-        </g>
-        <g data-detail="context" data-edge-from="audio_vad" data-edge-to="safety_guard" data-edge-label="triage scan" data-edge-key="8" data-edge-id="audio-to-safety">
-          <rect x="498.6" y="292" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="530" y="302" class="t-security" font-size="8" text-anchor="middle">triage scan</text>
-        </g>
-        <g data-detail="context" data-edge-from="state_store" data-edge-to="safety_guard" data-edge-label="context" data-edge-key="9" data-edge-id="store-to-safety">
-          <rect x="388.2" y="347" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="410" y="357" class="t-muted" font-size="8" text-anchor="middle">context</text>
-        </g>
-        <g data-detail="context" data-edge-from="safety_guard" data-edge-to="rest_gateway" data-edge-label="filtered text" data-edge-key="10" data-edge-id="safety-to-gateway">
-          <rect x="608.8" y="347" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="645" y="357" class="t-messagebus" font-size="8" text-anchor="middle">filtered text</text>
-        </g>
-        <g data-detail="context" data-edge-from="rest_gateway" data-edge-to="openrouter_hub" data-edge-label="fallback" data-edge-key="11" data-edge-id="gateway-to-openrouter">
-          <rect x="855.8" y="347" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="880" y="357" class="t-messagebus" font-size="8" text-anchor="middle">fallback</text>
+        <g id="node-phq4_assessment" data-node-id="phq4_assessment" data-node-label="PHQ-4 Screener" tabindex="0" role="button" aria-label="Focus PHQ-4 Screener, GAD-2 & PHQ-2 baseline" aria-pressed="false" data-node-kind="security" data-node-sublabel="GAD-2 & PHQ-2 baseline" data-node-tag="clinical intake">
+          <title>PHQ-4 Screener · GAD-2 & PHQ-2 baseline · clinical intake</title>
+          <rect x="230" y="440" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="230" y="440" width="140" height="54" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(236 446) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          
+          <text data-node-label="" data-detail-anchor="" x="300.0" y="464" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">PHQ-4 Screener</text>
+          <text data-detail="context" x="300.0" y="478" class="t-muted" font-size="8" text-anchor="middle">GAD-2 & PHQ-2 baseline</text>
+          <text data-detail="fine" x="300.0" y="488" class="t-security" font-size="7" text-anchor="middle">clinical intake</text>
         </g>
 
-        <!-- Boundary labels (foreground masks keep routes out of titles) -->
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="Client Boundary">
-          <rect data-graph-role="structural-frame-label-mask" x="220" y="190" width="91" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="224" y="203" class="t-cloud" font-size="9" font-weight="600">Client Boundary</text>
+        <g id="node-mindful_gamification" data-node-id="mindful_gamification" data-node-label="Mindful Activator" tabindex="0" role="button" aria-label="Focus Mindful Activator, streaks & mindful points" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="streaks & mindful points" data-node-tag="behavioral FSM">
+          <title>Mindful Activator · streaks & mindful points · behavioral FSM</title>
+          <rect x="460" y="440" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="460" y="440" width="140" height="54" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(466 446) scale(0.6875)">
+            <rect x="2" y="3" width="12" height="10" rx="2"/>
+            <path d="M2 6.5h12"/>
+            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
+            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
+          </g>
+          
+          <text data-node-label="" data-detail-anchor="" x="530.0" y="464" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Mindful Activator</text>
+          <text data-detail="context" x="530.0" y="478" class="t-muted" font-size="8" text-anchor="middle">streaks & mindful points</text>
+          <text data-detail="fine" x="530.0" y="488" class="t-frontend" font-size="7" text-anchor="middle">behavioral FSM</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="Supabase Cloud">
-          <rect data-graph-role="structural-frame-label-mask" x="220" y="60" width="85.6" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="224" y="73" class="t-cloud" font-size="9" font-weight="600">Supabase Cloud</text>
+        <g id="node-edge_tts" data-node-id="edge_tts" data-node-label="Vercel Edge TTS" tabindex="0" role="button" aria-label="Focus Vercel Edge TTS, JennyNeural 0.90 pace" aria-pressed="false" data-node-kind="backend" data-node-sublabel="JennyNeural 0.90 pace" data-node-tag="neural voice">
+          <title>Vercel Edge TTS · JennyNeural 0.90 pace · neural voice</title>
+          <rect x="930" y="440" width="150" height="54" rx="6" class="c-mask"/>
+          <rect x="930" y="440" width="150" height="54" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(936 446) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          
+          <text data-node-label="" data-detail-anchor="" x="1005.0" y="464" class="t-primary" font-size="8.5" font-weight="600" text-anchor="middle">Vercel Edge TTS</text>
+          <text data-detail="context" x="1005.0" y="478" class="t-muted" font-size="8" text-anchor="middle">JennyNeural 0.90 pace</text>
+          <text data-detail="fine" x="1005.0" y="488" class="t-backend" font-size="7" text-anchor="middle">neural voice</text>
         </g>
-
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="Cloud AI Tier">
-          <rect data-graph-role="structural-frame-label-mask" x="920" y="190" width="80.2" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="924" y="203" class="t-cloud" font-size="9" font-weight="600">Cloud AI Tier</text>
-        </g>
-
-        <!-- Legend -->
-
       </svg>
       <p class="intent-trace-status no-print" id="intent-trace-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <div class="share-chapter-cue no-print" id="share-chapter-cue" hidden role="status" aria-live="polite">
@@ -5601,12 +5760,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Voice-Native Core Loop</h3>
+          <h3>Voice-Native Core Loop (Aoede / Kore)</h3>
         </div>
         <ul>
-          <li>&bull; Primary path: 16/24kHz mono PCM streaming directly to Gemini Live</li>
-          <li>&bull; Client VAD triggers sub-second barge-in playback interruption</li>
-          <li>&bull; HavenlyOrb renders biofeedback pacing aligned with respiration</li>
+          <li>&bull; Primary path: 24kHz mono PCM streaming directly via WebSocket BidiGenerateContent</li>
+          <li>&bull; Client VAD triggers sub-second barge-in playback cancellation with zero audio overlap</li>
+          <li>&bull; HavenlyOrb renders biofeedback pacing aligned with respiration (4-7-8 &amp; box breathing)</li>
         </ul>
       </div>
 
@@ -5616,23 +5775,36 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Safety &amp; Multi-Tier AI Fallback</h3>
         </div>
         <ul>
-          <li>&bull; Deterministic regex and keyword heuristics scan user input locally</li>
-          <li>&bull; Crisis detection immediately opens direct-dial helpline triage</li>
-          <li>&bull; AI Gateway transparently falls back to OpenRouter free models</li>
+          <li>&bull; Deterministic regex and keyword heuristics scan user input locally prior to transmission</li>
+          <li>&bull; Crisis detection immediately opens direct-dial helpline triage (988 Lifeline &amp; Crisis Text Line)</li>
+          <li>&bull; AI Gateway seamlessly falls back to OpenRouter free models with Vercel Edge TTS (JennyNeural)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Clinical Baseline &amp; Behavioral Activation</h3>
+        </div>
+        <ul>
+          <li>&bull; Validated PHQ-4 psychometric screener (GAD-2 Anxiety + PHQ-2 Depression, 0–12 scoring)</li>
+          <li>&bull; Mindful behavioral gamification tracking daily reflection streaks &amp; milestone points</li>
+          <li>&bull; Acute panic quick-skip safeguard allowing instant emotional grounding with zero friction</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Identity &amp; Cloud Persistence</h3>
+          <h3>Identity, Persistence &amp; Medical Vault</h3>
         </div>
         <ul>
-          <li>&bull; Supabase Auth issues scoped JWTs stored in hardware Keystore</li>
-          <li>&bull; PostgreSQL enforces Row-Level Security on user reflections</li>
-          <li>&bull; In-memory mock store provides seamless offline fallback</li>
+          <li>&bull; Supabase Auth issues scoped JWTs stored in hardware Keychain / Keystore</li>
+          <li>&bull; PostgreSQL enforces Row-Level Security on user reflections and active conversation indexing</li>
+          <li>&bull; Dedicated Supabase Storage medical_records bucket with user-scoped RLS for encrypted PDFs</li>
         </ul>
       </div>
+    </div>
     </div>
 
   </div>

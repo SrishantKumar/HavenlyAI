@@ -29,6 +29,7 @@ pnpm-debug.*
 # macOS
 .DS_Store
 *.pem
+*.zip
 
 # Environment files
 .env

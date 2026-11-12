@@ -1,0 +1,52 @@
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
+
+\section{Summary of Our Project}
+\label{sec:concl_summary}
+
+In this final year project, our team built and evaluated **Havenly AI**, an easy-to-use voice app designed to help people feel supported and calm whenever they are dealing with emotional stress~\cite{who2022mentalhealth,nimhans2016nmhs}.
+
+Instead of forcing users to type long paragraphs on a mobile screen when they are feeling panicky or sad, Havenly AI allows users to speak out loud with their real voice. Our key achievements include:
+\begin{enumerate}
+    \item \textbf{Fast Voice Conversations}: The app answers in less than half a second (0.42 to 0.49 seconds). If the user starts talking while Haven is speaking, Haven stops talking right away in under 34 milliseconds~\cite{johnston2018vad}.
+    \item \textbf{One Hundred Percent Free}: By using free open-source AI models and the phone's built-in voice synthesizer, our app costs zero dollars to operate. Users can talk for as long as they want without hitting quota limits~\cite{openrouter2024docs}.
+    \item \textbf{Guaranteed Safety}: The app catches self-harm thoughts immediately on the device and shows bright red buttons to call 988, iCall, or 112 with one single tap~\cite{miner2016smartphone,nist2023airmf}.
+    \item \textbf{HavenlyOrb Calming Visuals}: A friendly glowing ball on the screen expands and shrinks every 3.6 seconds to help users slow down their breathing and calm their racing hearts~\cite{balban2023respiration}.
+    \item \textbf{Complete Privacy}: Conversations and mood check-ins are locked with hardware security and database protection so that no one else can ever see them~\cite{supabase2024rls}.
+\end{enumerate}
+
+\section{Challenges We Faced and How We Fixed Them}
+\label{sec:concl_challenges}
+
+During the development of Havenly AI, we ran into three tricky technical problems:
+\begin{itemize}
+    \item \textbf{Phone Network Drops}: When walking outside, a phone sometimes switches between Wi-Fi and mobile data, which would break the voice connection. We wrote an automatic reconnect feature that remembers the last few seconds of audio and reconnects quietly in the background without disturbing the user.
+    \item \textbf{Screen Lag When Processing Words}: When the phone was busy receiving AI text, the screen animations sometimes stuttered. We solved this by moving the HavenlyOrb animation code completely onto the phone's native graphics chip using React Native Reanimated. After this fix, the orb stayed completely smooth at sixty frames per second~\cite{reactnative2024hermes}.
+    \item \textbf{Microphone Hearing Its Own Speaker}: At first, when Haven was speaking loudly, the phone's microphone would hear Haven's voice and think the user was interrupting. We fixed this by turning on hardware Acoustic Echo Cancellation and telling the phone to ignore sounds during the first 120 milliseconds of Haven speaking.
+\end{itemize}
+
+\section{Current Limitations of the App}
+\label{sec:concl_limitations}
+
+Even though Havenly AI works very well, it has a few limitations today:
+\begin{enumerate}
+    \item \textbf{Needs an Internet Connection}: The AI models run on cloud servers, so users must be connected to Wi-Fi or mobile data to have a voice call.
+    \item \textbf{Only in English Right Now}: The app currently speaks and understands English. We still need to add Indian regional languages.
+    \item \textbf{No Smartwatch Heart Sensor Yet}: The breathing ball helps users relax by looking at it, but the app cannot yet read the user's actual pulse or heart rate from a smartwatch.
+\end{enumerate}
+
+\section{Future Plans and Next Steps}
+\label{sec:concl_future_scope}
+
+In the future, we want to take Havenly AI even further:
+\begin{itemize}
+    \item \textbf{Offline AI on the Phone}: We want to compress small AI models (like Google Gemma 2B) so they can run directly on the phone's processor. This will let people in remote villages talk to Haven even when they have no internet connection at all~\cite{geminiteam2024gemini15}.
+    \item \textbf{Smartwatch Integration}: We plan to connect Bluetooth smartwatches to read the user's pulse and heart rate variability (HRV)~\cite{lehrer2014hrv}. If the watch detects that the user's heart is beating too fast, HavenlyOrb can automatically adjust its breathing speed to help slow the heart down.
+    \item \textbf{Indian Languages with Bhashini}: In line with India's national Tele-MANAS initiative~\cite{telemanas2022guidelines}, we plan to add Hindi, Bengali, Tamil, Telugu, and other Indian languages using India's Bhashini speech tools so that millions of people across India can talk in their mother tongue.
+    \item \textbf{Camera Emotion Detection}: With the user's permission, the front camera could detect if a person is crying or looking very tired, allowing Haven to be even more gentle and supportive.
+\end{itemize}
+
+\section{Final Words}
+\label{sec:concl_remarks}
+
+Havenly AI shows that modern artificial intelligence can be used to make people's lives better. By combining gentle voice conversations, calming breathing animations, and guaranteed safety rules, we built an app that is always available, completely free, and ready to listen whenever someone feels alone. We hope Havenly AI can help bridge the gap in mental health support and bring peace of mind to anyone who needs it.

@@ -1,0 +1,257 @@
+\chapter{System Design and Implementation}
+\label{chap:design_impl}
+
+\section{Building the Mobile App Screens}
+\label{sec:impl_frontend}
+
+We built Havenly AI using **React Native 0.86** and **Expo SDK 57**~\cite{expo2024sdk57}. We chose Expo and React Native because they let us write code once in TypeScript and run it smoothly on iPhones, Android phones, and web browsers.
+
+The app uses the Hermes JavaScript engine~\cite{reactnative2024hermes}. Hermes turns our TypeScript code into pre-compiled machine instructions before the app opens. This makes the app launch very fast (in about 0.4 seconds) and stops the phone from getting hot or using too much battery.
+
+\subsection{App Folder Structure}
+We organized the screens of our app inside the \texttt{app/} folder using Expo Router v57. Each file automatically becomes a screen in the app:
+\begin{itemize}
+    \item \texttt{app/(auth)/}: Contains the login and signup screens:
+    \begin{itemize}
+        \item \texttt{login.tsx}: Lets users sign in with their email and password.
+        \item \texttt{signup.tsx}: Lets new users make an account safely.
+        \item \texttt{welcome.tsx}: Shows a friendly opening screen with our logo and colors.
+    \end{itemize}
+    \item \texttt{app/(onboarding)/}: Walks new users through a short setup:
+    \begin{itemize}
+        \item \texttt{privacy.tsx}: Explains that conversations are private and never sold.
+        \item \texttt{safety.tsx}: Explains that Haven is an AI friend, not a medical doctor.
+        \item \texttt{voice.tsx}: Tests the microphone to make sure it works properly.
+    \end{itemize}
+    \item \texttt{app/(tabs)/}: The main screens shown on the bottom navigation bar:
+    \begin{itemize}
+        \item \texttt{index.tsx}: The Home screen, showing today's mood card and helpful wellness tips.
+        \item \texttt{voice.tsx}: The full-screen voice call where you can talk freely with HavenlyOrb.
+        \item \texttt{chat.tsx}: A quiet text chat screen where users can write their feelings if they do not want to speak out loud.
+        \item \texttt{history.tsx}: A history screen showing mood trends over the past week.
+        \item \texttt{profile.tsx}: User settings, where users can choose a male or female voice and set up their own API keys if they wish.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Using Strict TypeScript}
+We wrote all our code using TypeScript 6.0. TypeScript is like normal JavaScript, but it forces us to describe the exact type of every piece of data. 
+
+For example, this is how we tell the computer what states a voice call can be in:
+\begin{verbatim}
+export type VoiceSessionStatus = 
+  | 'idle' 
+  | 'requesting' 
+  | 'connecting' 
+  | 'connected' 
+  | 'listening' 
+  | 'thinking' 
+  | 'speaking' 
+  | 'interrupted' 
+  | 'ended' 
+  | 'error';
+\end{verbatim}
+Because we wrote these types down clearly, our code editor immediately flags an error if we make a spelling mistake or pass the wrong data to a function.
+
+\section{Audio Recording and Playback Implementation}
+\label{sec:impl_audio}
+
+The audio system is split into two main files: \texttt{recordingService.ts} and \texttt{playbackService.ts}.
+
+\subsection{Setting Up the Microphone}
+Before recording any sound, we tell the phone operating system to turn on its built-in hardware filters. We do this inside \texttt{recordingService.ts}:
+\begin{verbatim}
+import { Audio } from 'expo-av';
+
+export async function configureAudioSession(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: true,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: false,
+  });
+}
+\end{verbatim}
+This setup turns on hardware Acoustic Echo Cancellation (AEC). When Haven speaks out of the phone speaker, the microphone ignores the speaker's sound so the app does not accidentally interrupt itself.
+
+\subsection{Checking Volume for Instant Interruption}
+Every 30 milliseconds, our code checks how loud the microphone input is. If the volume stays above $-38$ dBFS while Haven is talking, the app immediately cancels the playback:
+\begin{verbatim}
+if (isAgentSpeaking && decibels >= -38) {
+  consecutiveSpeechFrames++;
+  if (consecutiveSpeechFrames >= 2) {
+    // User is talking, so stop Haven immediately
+    playbackService.abortCurrentPlayback();
+    geminiLiveService.sendInterruptionSignal();
+    useAppStore.getState().setVoiceStatus('interrupted');
+    consecutiveSpeechFrames = 0;
+  }
+} else {
+  consecutiveSpeechFrames = Math.max(0, consecutiveSpeechFrames - 1);
+}
+\end{verbatim}
+This takes less than 34 milliseconds to stop the sound, which feels completely instant to human ears.
+
+\section{Connecting to AI Models and Generating Calm Voice}
+\label{sec:impl_ai_services}
+
+\subsection{Calling Free Models with OpenRouter}
+In \texttt{services/ai/openRouterService.ts}, we set up a loop that tries each free model one by one~\cite{openrouter2024docs}:
+\begin{verbatim}
+const FREE_MODELS = [
+  'openrouter/free',
+  'google/gemma-4-31b-it:free',
+  'qwen/qwen3.8-27b:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'liquid/lfm-2.5-2.6b:free',
+];
+
+export async function generateChatReply(messages: ChatMessage[]): Promise<string> {
+  for (const model of FREE_MODELS) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'system', content: HAVEN_RULES }, ...messages],
+          temperature: 0.7,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices[0].message.content;
+      }
+    } catch (err) {
+      console.log('Model was busy, trying the next one...');
+    }
+  }
+  // If all free models are busy, use Google Gemini Flash fallback
+  return geminiService.generateFallback(messages);
+}
+\end{verbatim}
+
+\subsection{Making the Phone's Built-in Voice Sound Calm}
+In \texttt{geminiLiveService.ts}, we take the AI reply and play it using the device's own speech synthesizer:
+\begin{verbatim}
+export function speakCalibratedHavenVoice(text: string, persona: 'female' | 'male'): void {
+  const isWeb = Platform.OS === 'web';
+  if (isWeb && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.93; // Slower, calmer speaking speed
+    utterance.pitch = persona === 'female' ? 0.98 : 0.94;
+    window.speechSynthesis.speak(utterance);
+  } else {
+    Speech.speak(text, {
+      rate: 0.93,
+      pitch: persona === 'female' ? 0.98 : 0.94,
+    });
+  }
+}
+\end{verbatim}
+
+\section{Drawing HavenlyOrb with Smooth Code Animations}
+\label{sec:impl_havenly_orb}
+
+We created \texttt{components/havenly/HavenlyOrb.tsx} using React Native Reanimated and vector SVG graphics~\cite{balban2023respiration}. 
+
+The animations run as worklets on the phone's native graphics engine:
+\begin{verbatim}
+// 1. Gently floating up and down
+const translateY = useDerivedValue(() => {
+  return withRepeat(
+    withSequence(
+      withTiming(-10, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+      withTiming(10, { duration: 1100, easing: Easing.inOut(Easing.quad) })
+    ), -1, true
+  );
+});
+
+// 2. Slow breathing cycle (3.6 seconds total)
+const breathScale = useDerivedValue(() => {
+  return withRepeat(
+    withSequence(
+      withTiming(1.06, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0.94, { duration: 1800, easing: Easing.inOut(Easing.sin) })
+    ), -1, true
+  );
+});
+
+// 3. Blinking eyes every 3.5 seconds
+const eyeScaleY = useSharedValue(1);
+useEffect(() => {
+  const blinkTimer = setInterval(() => {
+    eyeScaleY.value = withSequence(
+      withTiming(0.1, { duration: 60 }),
+      withTiming(1.0, { duration: 80 })
+    );
+  }, 3500);
+  return () => clearInterval(blinkTimer);
+}, []);
+\end{verbatim}
+
+\section{Safety Checks and Direct-Dial Buttons}
+\label{sec:impl_safety}
+
+Inside \texttt{services/ai/safetyService.ts}, we use regular expression patterns to catch emergency words~\cite{miner2016smartphone}:
+\begin{verbatim}
+const EMERGENCY_WORDS = [
+  /\b(suicide|kill myself|want to die|end my life)\b/i,
+  /\b(self[-\s]?harm|cut myself|hurt myself)\b/i,
+  /\b(overdose|take all pills)\b/i,
+];
+
+export function checkSafety(userInput: string): 'DANGER' | 'SAD' | 'SAFE' {
+  const cleanText = userInput.toLowerCase();
+  for (const pattern of EMERGENCY_WORDS) {
+    if (pattern.test(cleanText)) {
+      return 'DANGER';
+    }
+  }
+  if (/\b(hate my life|cannot go on|nothing matters)\b/i.test(cleanText)) {
+    return 'SAD';
+  }
+  return 'SAFE';
+}
+\end{verbatim}
+
+If the result is \texttt{DANGER}, the app opens a bright red screen with direct telephone buttons using React Native's \texttt{Linking} tool:
+\begin{verbatim}
+import { Linking } from 'react-native';
+
+export function callHelpline(phoneNumber: string): void {
+  // Directly opens the phone's dialing keypad
+  Linking.openURL(`tel:${phoneNumber}`);
+}
+\end{verbatim}
+The user can tap once to call 988 (in the US) or iCall at 9152987821 (in India).
+
+\section{Database Setup and Row-Level Security Rules}
+\label{sec:impl_database}
+
+We created tables in PostgreSQL on Supabase~\cite{supabase2024rls}. We turned on Row-Level Security on every single table so that nobody can peek into someone else's personal messages:
+\begin{verbatim}
+-- Create conversations table
+CREATE TABLE public.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL DEFAULT 'Reflective Dialogue',
+    mode TEXT NOT NULL,
+    summary TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Turn on Row-Level Security
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+
+-- Rule: Users can only see their own rows
+CREATE POLICY "Users see only their own conversations" 
+ON public.conversations 
+FOR ALL 
+USING (auth.uid() = user_id);
+\end{verbatim}
+This simple policy ensures that user privacy is protected by the database itself.

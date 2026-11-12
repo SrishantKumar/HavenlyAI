@@ -98,6 +98,7 @@ function InitialLayout() {
         <Stack.Screen name="call/index" options={{ headerShown: false }} />
         <Stack.Screen name="call/status" options={{ headerShown: false }} />
         <Stack.Screen name="settings/index" options={{ headerShown: false }} />
+        <Stack.Screen name="quest/[id]" options={{ headerShown: false, presentation: 'card' }} />
       </Stack>
       <SafetySupportCard />
     </>

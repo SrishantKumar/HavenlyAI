@@ -1,0 +1,398 @@
+\documentclass[USenglish,a4paper,12pt]{nitathesis}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{xcolor}
+\makeatletter
+\def\@xfloat #1[#2]{%
+  \@nodocument
+  \def \@captype {#1}%
+   \def \@fps {#2}%
+   \@onelevel@sanitize \@fps
+   \def \reserved@b {!}%
+   \ifx \reserved@b \@fps
+     \@fpsadddefault
+   \else
+     \ifx \@fps \@empty
+       \@fpsadddefault
+     \fi
+   \fi
+   \ifhmode
+     \@bsphack
+     \@floatpenalty -\@Mii
+   \else
+     \@floatpenalty-\@Miii
+   \fi
+  \ifinner
+     \@parmoderr\@floatpenalty\z@
+  \else
+    \@next\@currbox\@freelist
+      {%
+       \@tempcnta \sixt@@n
+       \expandafter \@tfor \expandafter \reserved@a
+         \expandafter :\expandafter =\@fps
+         \do
+          {%
+           \if \reserved@a h%
+             \ifodd \@tempcnta
+             \else
+               \advance \@tempcnta \@ne
+             \fi
+           \fi
+           \if \reserved@a t%
+             \@setfpsbit \tw@
+           \fi
+           \if \reserved@a b%
+             \@setfpsbit 4%
+           \fi
+           \if \reserved@a p%
+             \@setfpsbit 8%
+           \fi
+           \if \reserved@a !%
+             \ifnum \@tempcnta>15
+               \advance\@tempcnta -\sixt@@n\relax
+             \fi
+           \fi
+           }%
+       \@tempcntb \csname ftype@\@captype \endcsname
+       \multiply \@tempcntb \@xxxii
+       \advance \@tempcnta \@tempcntb
+       \global \count\@currbox \@tempcnta
+       }%
+    \@fltovf
+  \fi
+  \global \setbox\@currbox
+    \color@vbox
+      \normalcolor
+      \vbox \bgroup
+        \hsize\columnwidth
+        \@parboxrestore
+        \@floatboxreset
+}
+\makeatother
+
+\usepackage{graphicx,times,epsfig,amsmath}
+\usepackage[square,numbers,comma]{natbib}
+\usepackage{amssymb,amsfonts,textcomp}
+\usepackage[utf8]{inputenc}
+\usepackage[Sonny]{fncychap}
+\usepackage{latexsym}
+\usepackage{float}
+\usepackage{xspace}
+\usepackage{algorithmwh}
+\usepackage{comment}
+\usepackage{pifont}
+\usepackage{fancyhdr}
+\usepackage{import}
+\usepackage{rotating}
+\usepackage{ragged2e}
+
+\usepackage{subcaption}
+\usepackage{placeins}
+\usepackage{relsize}
+\usepackage{booktabs}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{supertabular}
+\usepackage{hhline}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{verbatim}
+\usepackage{chngcntr}
+\usepackage[flushleft]{threeparttable}
+\usepackage{tabulary}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Spacing adjustments
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\@makechapterhead}{\vspace*{50\p@}}{\vspace*{0\p@}}{}{}
+\patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{\vspace*{0\p@}}{}{}
+\makeatother
+
+\usepackage[compact]{titlesec}
+\titlespacing{\section}{0pt}{*1.2}{*0.6}
+\titlespacing{\subsection}{0pt}{*1.0}{*0.5}
+\titlespacing{\subsubsection}{0pt}{*0.8}{*0.4}
+
+\usepackage{mdwlist}
+
+\newlength{\bibitemsep}\setlength{\bibitemsep}{.2\baselineskip plus .05\baselineskip minus .05\baselineskip}
+\newlength{\bibparskip}\setlength{\bibparskip}{0pt}
+\let\oldthebibliography\thebibliography
+\renewcommand\thebibliography[1]{%
+  \oldthebibliography{#1}%
+  \setlength{\parskip}{\bibitemsep}%
+  \setlength{\itemsep}{\bibparskip}%
+}
+
+\counterwithout{footnote}{chapter}
+\bibliographystyle{abbrv}
+
+\newcommand\tabletop{\hline\noalign{\smallskip}}
+\newcommand\tablemid{\noalign{\smallskip}\hline\noalign{\smallskip}}
+\newcommand\tablebot{\noalign{\smallskip}\hline}
+\newcommand\tablecline[2]{\noalign{\smallskip}\cline{#1-#2}\noalign{\smallskip}}
+
+\setlength{\marginparwidth}{2cm} 
+
+\lhead{}
+\chead{}
+\lfoot{}
+\cfoot{\thepage}
+\rfoot{}
+
+\setlength{\headheight}{14.5pt}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+% Project metadata
+\title{HavenlyAI: Real-Time Conversational Artificial Intelligence Platform for Mental Wellness and Affective Grounding}
+\maintitle{HAVENLYAI: REAL-TIME CONVERSATIONAL ARTIFICIAL INTELLIGENCE PLATFORM FOR MENTAL WELLNESS AND AFFECTIVE GROUNDING}
+\author{Srishant Kumar, Agrim Gupta, Aishwarya Pratap Singh, Kamal Nayan}
+\RegNo{23UICS169, 23UICS094, 23UICS135, 23UICS093}
+\supervisor{Dr. Sushmita Sharma}
+\supervisorDesig{Project Mentor, Assistant Professor}
+\hod{Dr. Ashim Saha}
+\dept{Computer Science and Engineering}
+\submitdate{MAY 2026}
+\copyrightyear{2026}
+
+\begin{document}
+
+\beforepreface
+
+\prefacesection{Acknowledgement}
+
+We want to thank our project mentor, \textbf{Dr. Sushmita Sharma}, Assistant Professor in the Department of Computer Science and Engineering at IIIT Agartala. She guided us with great patience, helped us solve difficult problems in voice processing and AI safety, and always encouraged us to do our best work.
+
+We also thank \textbf{Dr. Ashim Saha}, Head of the Department, along with all the teachers and staff of the Department of Computer Science and Engineering at IIIT Agartala. They provided us with the classrooms, computer labs, and helpful lessons that made this project possible.
+
+We are very grateful to our college friends and classmates who tried out the app and gave us honest advice on how to make it simpler and easier to use. 
+
+Most of all, we thank our parents and family members. Their continuous love, care, and blessings gave us the strength to complete this final year project successfully.
+
+\vspace*{1.0cm} 
+\begin{flushright}
+\textbf{Srishant Kumar} (23UICS169)\\
+\textbf{Agrim Gupta} (23UICS094)\\
+\textbf{Aishwarya Pratap Singh} (23UICS135)\\
+\textbf{Kamal Nayan} (23UICS093)
+\end{flushright}
+
+\pagestyle{fancy}
+\fancyhead[RO,RE]{\nouppercase\rightmark}
+\fancyfoot[C]{\thepage}
+\listoffigures
+\listoftables
+\newpage
+
+\prefacesection{Abstract}
+
+Mental health is very important for everyone, but many people cannot get help when they feel sad, anxious, or lonely. Traditional therapy is often too expensive, and clinics are closed late at night when people need help the most. 
+
+Havenly AI is a friendly, voice-first mobile app created to help people feel supported. Instead of typing on a keyboard, users can simply talk out loud to Haven, a gentle artificial intelligence companion. Haven answers in a calm, human-like voice and lets the user interrupt at any second. On the screen, a colorful glowing ball called HavenlyOrb breathes in and out slowly to help users calm their breathing. 
+
+If a user ever talks about hurting themselves, the app immediately displays emergency phone numbers like 988 and iCall so they can reach real help right away. Havenly AI is completely free, keeps all personal conversations private, and runs smoothly on phones and computers.
+
+\renewcommand{\headrulewidth}{0.5pt}
+\pagestyle{fancy}
+\fancyhead[RO,RE]{\nouppercase\rightmark}
+\fancyfoot[C]{\thepage}
+\tableofcontents
+\newpage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}   
+
+\fancyhf{}
+\fancyhead[RO]{\slshape\nouppercase\rightmark{}}
+\fancyhead[RE]{\slshape\nouppercase\leftmark{}}
+\cfoot{\thepage}
+\pagestyle{fancy}
+
+\flushbottom
+\include{chapter1}
+\flushbottom
+
+\flushbottom
+\include{chapter2}
+\flushbottom
+
+\flushbottom
+\include{chapter3}
+\flushbottom
+
+\flushbottom
+\include{chapter4}
+\flushbottom
+
+\flushbottom
+\include{chapter5}
+\flushbottom
+
+\flushbottom
+\include{chapter6}
+\flushbottom
+
+\small
+\bibliography{bib/mybib}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+\chapter{System Settings and Safety Rules}
+\label{app:prompts}
+
+\section{System Instructions for Haven}
+
+The rules that guide Haven are written in simple and clear words inside the code:
+\begin{quote}
+\small
+\texttt{You are Haven, a kind and supportive voice companion. Your only job is to listen carefully and help users feel calm and heard.}\\
+\\
+\textbf{IMPORTANT SAFETY RULES}:\\
+1. \textbf{Not a Doctor}: You are an AI friend, not a licensed medical doctor or therapist. You must never give medical advice, diagnostic labels, or tell someone what medicines to take.\\
+2. \textbf{Listen First}: Always listen and understand how the person feels before suggesting anything. Say things like, ``That sounds really hard,'' or ``I am right here with you.''\\
+3. \textbf{Keep Answers Short}: When talking out loud, speak in short sentences of two to three lines. Do not give long lectures or bullet points.\\
+4. \textbf{Stay on Topic}: If a user asks for homework help, computer code, or math problems, politely say, ``I am Haven, and I am only here to support your feelings. Is there something on your mind you would like to talk about?''\\
+5. \textbf{Emergency Help}: If a user says they want to hurt themselves, speak with calm care while the app shows direct emergency helpline numbers on the screen.
+\end{quote}
+
+\section{Application Setup Variables}
+
+Table~\ref{tab:app_env_vars} lists the main settings used to run the application.
+
+\begin{table}[ht]
+\centering
+\caption{Havenly AI Setup Variables}
+\label{tab:app_env_vars}
+\begin{tabularx}{\textwidth}{llcX}
+\toprule
+\textbf{Variable Name} & \textbf{Type} & \textbf{Default} & \textbf{Purpose} \\
+\midrule
+\texttt{EXPO\_PUBLIC\_OPENROUTER\_API\_KEY} & Text & Optional & Key for the free open-source AI models. \\
+\texttt{EXPO\_PUBLIC\_GEMINI\_API\_KEY} & Text & Optional & Key for Google Gemini live voice streaming. \\
+\texttt{EXPO\_PUBLIC\_DEMO\_MODE} & True/False & \texttt{false} & Runs the app locally without calling cloud APIs. \\
+\texttt{EXPO\_PUBLIC\_SUPABASE\_URL} & Text & Required & Address of the secure Supabase database. \\
+\texttt{EXPO\_PUBLIC\_SUPABASE\_ANON\_KEY} & Text & Required & Key used by the phone to save chat history safely. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{Database Structure and Privacy Policies}
+\label{app:schema}
+
+The database is built on PostgreSQL inside Supabase. It uses Row-Level Security so that every student and user can only read their own personal data.
+
+\begin{verbatim}
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. User Profiles Table
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    display_name TEXT,
+    preferred_voice TEXT DEFAULT 'female',
+    baseline_phq4 INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can only see and edit their own profile"
+ON public.profiles FOR ALL
+USING (auth.uid() = id);
+
+-- 2. Daily Mood Check-Ins Table
+CREATE TABLE public.check_ins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    mood TEXT NOT NULL,
+    phq4_score INT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+ALTER TABLE public.check_ins ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can only see their own check-ins"
+ON public.check_ins FOR ALL
+USING (auth.uid() = user_id);
+
+-- 3. Conversations Table
+CREATE TABLE public.conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL DEFAULT 'Reflective Dialogue',
+    mode TEXT NOT NULL,
+    summary TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can only read their own conversations"
+ON public.conversations FOR ALL
+USING (auth.uid() = user_id);
+\end{verbatim}
+
+\chapter{Software Links and Project Information}
+\label{app:publications}
+
+\section{Code Repositories and Downloads}
+\begin{enumerate}
+    \item \textbf{Havenly AI GitHub Repository}: Complete source code for the mobile and web application:\\
+    \url{https://github.com/SrishantKumar/HavenlyAI}
+    \item \textbf{Download Android App (APK v1.0.0)}: Ready-to-install Android application package:\\
+    \url{https://github.com/SrishantKumar/HavenlyAI/releases/download/v1.0.0/HavenlyAI-v1.0.0.apk}
+    \item \textbf{Online System Architecture Page}: Visual interactive diagram of Havenly AI:\\
+    \url{https://github.com/SrishantKumar/HavenlyAI/blob/main/havenlyai-architecture.html}
+\end{enumerate}
+
+\chapter{Biographical Sketches of the Project Team}
+\label{app:bio}
+
+\begin{center}
+{\textbf{\Large Student Project Team}}\\
+Department of Computer Science and Engineering\\
+Indian Institute of Information Technology Agartala, Tripura, India, 799046\\
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{1. Srishant Kumar} (Enrollment No: \texttt{23UICS169}) is a final-year B.Tech student in the Department of Computer Science and Engineering at IIIT Agartala. 
+\begin{itemize}
+    \item \textbf{Role in Project}: Frontend and Mobile Application Development.
+    \item \textbf{Key Contributions}: Designed and implemented the complete cross-platform mobile application using React Native 0.86 and Expo SDK 57, powered by the Hermes bytecode engine. Architected the file-system-based typed navigation routing using Expo Router v57 across authentication, onboarding, home dashboard, reflective chat, mood history, and profile screens. Engineered the HavenlyOrb visual biofeedback interface, writing native-thread animation worklets using React Native Reanimated and declarative SVG gradients. Implemented real-time amplitude metering, audio visualizers, and state management using Zustand. Email: \texttt{srishant054@gmail.com}.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{2. Agrim Gupta} (Enrollment No: \texttt{23UICS094}) is a final-year B.Tech student in the Department of Computer Science and Engineering at IIIT Agartala.
+\begin{itemize}
+    \item \textbf{Role in Project}: Artificial Intelligence and Machine Learning Architecture.
+    \item \textbf{Key Contributions}: Architected the multi-provider AI cascading pipeline across OpenRouter's free-tier open-weight model cluster (Google Gemma-4 31B, Qwen 3.8 27B, Nvidia Nemotron 3.5, and Liquid LFM 2.5). Developed the bidirectional WebSocket streaming client connecting to Google Gemini Multimodal Live. Engineered the zero-quota acoustic voice calibration engine (adjusting speech rate to 0.93 and pitch to 0.98/0.94 for calming cadence) and implemented the client-side Root Mean Square (RMS) Voice Activity Detection (VAD) algorithms for instant sub-34 millisecond conversational barge-in interruptions. Formulated prompt safety boundary locks and anti-jailbreak protection filters.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{3. Aishwarya Pratap Singh} (Enrollment No: \texttt{23UICS135}) is a final-year B.Tech student in the Department of Computer Science and Engineering at IIIT Agartala.
+\begin{itemize}
+    \item \textbf{Role in Project}: Deployment, Cloud Infrastructure, and Backend Architecture.
+    \item \textbf{Key Contributions}: Set up and managed the cloud PostgreSQL database on Supabase, writing database migrations, indexes, and automated foreign key cascades for user profiles, conversations, messages, and longitudinal mood check-ins. Implemented strict Row-Level Security (RLS) policies ensuring complete cryptographic data isolation across users. Integrated hardware-level token encryption via Expo SecureStore connecting to Apple Secure Enclave and Android Keystore. Configured continuous integration and automated mobile application build pipelines using Expo Application Services (EAS), producing the signed production Android APK distribution. Managed web application deployment on Vercel.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{4. Kamal Nayan} (Enrollment No: \texttt{23UICS093}) is a final-year B.Tech student in the Department of Computer Science and Engineering at IIIT Agartala.
+\begin{itemize}
+    \item \textbf{Role in Project}: Research, Literature Survey, and Clinical Evaluation.
+    \item \textbf{Key Contributions}: Conducted the in-depth literature review and epidemiological analysis across government mental health surveys from the World Health Organization (WHO), NIMHANS (National Mental Health Survey of India), MoHFW Tele-MANAS, CDC, and SAMHSA. Investigated the physiological principles of the Polyvagal Theory and respiratory sinus arrhythmia to design the HavenlyOrb 3.6-second breathing pacing rhythm. Formalized psychometric screening integration using PHQ-4 and GAD-7 clinical metrics. Constructed the 250-prompt adversarial and crisis evaluation benchmark following NIST and OWASP standards, and coordinated the 30-participant user testing trials and statistical satisfaction analyses.
+\end{itemize}
+
+\end{document}

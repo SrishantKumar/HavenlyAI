@@ -61,11 +61,12 @@ export function maskPhoneNumber(phone?: string): string {
 }
 
 /**
- * Gets a greeting based on the current hour.
+ * Gets a greeting based on the current hour (morning / afternoon / evening / night).
  */
 export function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 22) return 'Good evening';
+  return 'Peaceful night';
 }
