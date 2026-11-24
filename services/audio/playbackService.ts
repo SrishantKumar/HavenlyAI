@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { useAppStore } from '../../store/useAppStore';
+import { edgeTtsService } from './edgeTtsService';
 
 let createAudioPlayer: any = null;
 let setAudioModeAsync: any = null;
@@ -181,180 +182,25 @@ export const playbackService = {
 
       onPlaybackStatusUpdateCallback = onStatusUpdate || null;
 
-      // Handle custom speech synthesis URI fallback for serverless web or native mobile environments
+      // Handle speech:// URI via Edge TTS (no on-device robotic TTS fallback)
       if (uri.startsWith('speech://')) {
         const rawText = decodeURIComponent(uri.substring(9));
-        // Strip all emojis so speech engines never pronounce emoji names like "purple heart"
         const text = rawText.replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim();
-        
-        // Mobile fallback using expo-speech
-        if (Platform.OS !== 'web') {
-          try {
-            const Speech = require('expo-speech');
-            console.log('Using native expo-speech for vocal output:', text);
-            
-            let selectedVoiceId: string | undefined = undefined;
-
-            // Strictly default to premium natural female voice (Samantha / female_1)
-            try {
-              const list = await Speech.getAvailableVoicesAsync();
-              const match = list.find((v: any) => {
-                const n = (v.name || '').toLowerCase();
-                const id = (v.identifier || '').toLowerCase();
-                const l = (v.language || '').toLowerCase();
-                if (!l.startsWith('en')) return false;
-                return (
-                  n.includes('samantha') ||
-                  id.includes('samantha') ||
-                  n.includes('female_1') ||
-                  id.includes('female_1') ||
-                  n.includes('ava') ||
-                  n.includes('karen') ||
-                  n.includes('zira') ||
-                  n.includes('female')
-                );
-              });
-              if (match) {
-                selectedVoiceId = match.identifier;
-              }
-            } catch (_) {}
-
-            if (onPlaybackStatusUpdateCallback) {
-              onPlaybackStatusUpdateCallback({
-                isLoaded: true,
-                isPlaying: true,
-                positionMillis: 0,
-                durationMillis: text.length * 80,
-                didJustFinish: false,
-              });
-            }
-
-            Speech.speak(text, {
-              voice: selectedVoiceId,
-              pitch: 1.0,
-              rate: 0.90, // Softened natural conversational pacing
-              onStart: () => {
-                if (onPlaybackStatusUpdateCallback) {
-                  onPlaybackStatusUpdateCallback({
-                    isLoaded: true,
-                    isPlaying: true,
-                    positionMillis: 0,
-                    durationMillis: text.length * 80,
-                    didJustFinish: false,
-                  });
-                }
-              },
-              onComplete: () => {
-                if (onPlaybackStatusUpdateCallback) {
-                  onPlaybackStatusUpdateCallback({
-                    isLoaded: true,
-                    isPlaying: false,
-                    positionMillis: text.length * 80,
-                    durationMillis: text.length * 80,
-                    didJustFinish: true,
-                  });
-                }
-              },
-              onError: (err: any) => {
-                console.error('expo-speech error:', err);
-                if (onPlaybackStatusUpdateCallback) {
-                  onPlaybackStatusUpdateCallback({
-                    isLoaded: true,
-                    isPlaying: false,
-                    positionMillis: 0,
-                    durationMillis: 100,
-                    didJustFinish: true,
-                  });
-                }
-              }
+        const speechUri = text ? await edgeTtsService.generateAndDownloadSpeech(text) : null;
+        if (!speechUri) {
+          console.warn('[PlaybackService] Edge TTS returned no audio for speech:// URI');
+          if (onPlaybackStatusUpdateCallback) {
+            onPlaybackStatusUpdateCallback({
+              isLoaded: true,
+              isPlaying: false,
+              positionMillis: 0,
+              durationMillis: 100,
+              didJustFinish: true,
             });
-            return;
-          } catch (e) {
-            console.warn('Failed to load expo-speech native module', e);
           }
+          return;
         }
-
-        // Web fallback using browser speech synthesis
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-
-          const utterance = new SpeechSynthesisUtterance(text);
-          activeUtterance = utterance;
-
-          utterance.pitch = 1.0;
-          utterance.rate = 0.90;
-          utterance.volume = 1.0;
-
-          const voices = window.speechSynthesis.getVoices();
-          let selectedVoice = null;
-
-          const maleNames = ['david', 'ravi', 'george', 'daniel', 'mark', 'richard', 'thomas', 'guy', 'stefan', 'james', 'alex'];
-          const preferredVoiceKeywords = [
-            'veena', 'heera', 'en-in', 'samantha', 'zira', 'susan', 'karen', 'hazel', 'google us english'
-          ];
-
-          const englishVoices = voices.filter(v => v.lang.toLowerCase().startsWith('en'));
-          const candidateVoices = englishVoices.filter(v => 
-            !maleNames.some(name => v.name.toLowerCase().includes(name))
-          );
-
-          for (const keyword of preferredVoiceKeywords) {
-            selectedVoice = candidateVoices.find(v => 
-              v.name.toLowerCase().includes(keyword) || 
-              v.lang.toLowerCase().replace('_', '-').includes(keyword)
-            ) || null;
-            if (selectedVoice) break;
-          }
-
-          if (!selectedVoice && candidateVoices.length > 0) {
-            selectedVoice = candidateVoices[0];
-          }
-
-          if (selectedVoice) {
-            utterance.voice = selectedVoice;
-          }
-
-          utterance.onstart = () => {
-            if (onPlaybackStatusUpdateCallback) {
-              onPlaybackStatusUpdateCallback({
-                isLoaded: true,
-                isPlaying: true,
-                positionMillis: 0,
-                durationMillis: text.length * 80,
-                didJustFinish: false,
-              });
-            }
-          };
-
-          utterance.onend = () => {
-            if (onPlaybackStatusUpdateCallback) {
-              onPlaybackStatusUpdateCallback({
-                isLoaded: true,
-                isPlaying: false,
-                positionMillis: text.length * 80,
-                durationMillis: text.length * 80,
-                didJustFinish: true,
-              });
-            }
-            activeUtterance = null;
-          };
-
-          utterance.onerror = () => {
-            if (onPlaybackStatusUpdateCallback) {
-              onPlaybackStatusUpdateCallback({
-                isLoaded: true,
-                isPlaying: false,
-                positionMillis: 0,
-                durationMillis: 100,
-                didJustFinish: true,
-              });
-            }
-            activeUtterance = null;
-          };
-
-          window.speechSynthesis.speak(utterance);
-        }
-        return;
+        uri = speechUri;
       }
 
       // Configure audio session for playback
@@ -449,16 +295,6 @@ export const playbackService = {
       if (playerInstance && typeof playerInstance.pause === 'function') {
         playerInstance.pause();
       }
-      // Native expo-speech pause (iOS)
-      if (Platform.OS !== 'web') {
-        try {
-          const Speech = require('expo-speech');
-          Speech.pause();
-        } catch (e) {}
-      }
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.pause();
-      }
       console.log('Audio playback paused');
     } catch (error) {
       console.error('Failed to pause playback', error);
@@ -473,16 +309,6 @@ export const playbackService = {
     try {
       if (playerInstance && typeof playerInstance.play === 'function') {
         playerInstance.play();
-      }
-      // Native expo-speech resume (iOS)
-      if (Platform.OS !== 'web') {
-        try {
-          const Speech = require('expo-speech');
-          Speech.resume();
-        } catch (e) {}
-      }
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.resume();
       }
       console.log('Audio playback resumed');
     } catch (error) {
@@ -604,20 +430,6 @@ export const playbackService = {
       playerInstance = null;
       store.setAudioPlayerRef(null);
 
-      // Stop native speech synthesis if active
-      if (Platform.OS !== 'web') {
-        try {
-          const Speech = require('expo-speech');
-          Speech.stop();
-        } catch (_) {}
-      }
-
-      // Stop browser speech synthesis if active
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-
-      activeUtterance = null;
       onPlaybackStatusUpdateCallback = null;
 
       // Set orb state back to 'listening' for smooth conversation flow
