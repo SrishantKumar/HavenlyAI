@@ -25,7 +25,9 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 async function getWebKokoroTts(): Promise<any> {
   if (!webTtsPromise) {
     webTtsPromise = (async () => {
-      const { KokoroTTS } = await import('kokoro-js');
+      const kokoroUrl = 'https://esm.sh/kokoro-js@1.2.1';
+      // @ts-ignore - loaded dynamically from CDN on web so onnxruntime-node is not in package.json
+      const { KokoroTTS } = await import(/* webpackIgnore: true */ kokoroUrl);
       console.log('[KokoroTTS] Loading Kokoro-82M-v1.0-ONNX in browser...');
       return KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
         dtype: 'q8',
