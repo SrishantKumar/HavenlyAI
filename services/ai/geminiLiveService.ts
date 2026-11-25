@@ -568,14 +568,17 @@ export const geminiLiveService = {
             throw new Error('Edge TTS speech generation returned null.');
           })
           .catch((err) => {
-            console.warn('[GeminiLive] Edge TTS failed:', err);
-            isSpeakingResponse = false;
+            console.warn('[GeminiLive] Falling back to native natural female voice:', err);
             useAppStore.getState().setOrbState('error');
             setTimeout(() => {
               useAppStore.getState().setOrbState('idle');
             }, 1000);
-            this.callbacks.onStateChanged?.('connected');
-            setTimeout(() => this.restartRecognition(), 400);
+
+            if (Platform.OS === 'web') {
+              this.speakWithWebSpeech(text);
+            } else {
+              this.speakWithNativeSpeech(text);
+            }
           });
       });
   },

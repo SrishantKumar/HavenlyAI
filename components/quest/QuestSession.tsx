@@ -13,8 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { edgeTtsService } from '../../services/audio/edgeTtsService';
-import { playbackService } from '../../services/audio/playbackService';
+import * as Speech from 'expo-speech';
 import {
   X,
   Volume2,
@@ -103,7 +102,9 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
   // Stop speech when component unmounts
   useEffect(() => {
     return () => {
-      playbackService.stop().catch(() => {});
+      try {
+        Speech.stop();
+      } catch (_) {}
       try {
         if (recognitionRef.current) {
           recognitionRef.current.stop?.();
@@ -112,21 +113,19 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
     };
   }, []);
 
-  // Speak text helper with mute check (uses Edge TTS)
+  // Speak text helper with mute check
   const speakText = useCallback(
     (textToSpeak: string) => {
       if (isMuted || !textToSpeak) return;
-      playbackService
-        .stop()
-        .then(() => edgeTtsService.generateAndDownloadSpeech(textToSpeak))
-        .then((uri) => {
-          if (uri) {
-            return playbackService.play(uri);
-          }
-        })
-        .catch((err) => {
-          console.warn('Edge TTS read aloud error:', err);
+      try {
+        Speech.stop();
+        Speech.speak(textToSpeak, {
+          rate: 0.95,
+          pitch: 1.05,
         });
+      } catch (err) {
+        console.warn('Speech read aloud error:', err);
+      }
     },
     [isMuted]
   );
@@ -253,7 +252,7 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
     if (safety.isCrisis) {
       // High crisis phrase: halt quest immediately and open triage sheet
       try {
-        playbackService.stop().catch(() => {});
+        Speech.stop();
       } catch (_) {}
       setShowSafetySupport(true);
       return;
@@ -345,7 +344,7 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
   // Complete and save quest
   const handleFinishQuest = async () => {
     try {
-      playbackService.stop().catch(() => {});
+      Speech.stop();
     } catch (_) {}
 
     const results = await completeQuest({
@@ -377,7 +376,7 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
   const confirmExit = () => {
     setExitModalVisible(false);
     try {
-      playbackService.stop().catch(() => {});
+      Speech.stop();
     } catch (_) {}
     onExit ? onExit() : router.back();
   };
@@ -429,7 +428,7 @@ export const QuestSession: React.FC<QuestSessionProps> = ({ quest, onExit }) => 
               setIsMuted(nextMuted);
               if (nextMuted) {
                 try {
-                  playbackService.stop().catch(() => {});
+                  Speech.stop();
                 } catch (_) {}
               }
             }}

@@ -1,11 +1,14 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { CONFIG } from '../../constants/config';
 
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-const DEFAULT_KOKORO_VOICE = 'af_heart';
+const HARDCODED_EDGE_VOICE = 'en-US-JennyNeural';
 
-let webTtsPromise: Promise<any> | null = null;
-
+/**
+ * Pure TypeScript helper to convert an ArrayBuffer to a base64 string
+ * without external dependencies or Node Buffer references.
+ */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
@@ -22,41 +25,28 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return base64;
 }
 
-async function getWebKokoroTts(): Promise<any> {
-  if (!webTtsPromise) {
-    webTtsPromise = (async () => {
-      const kokoroUrl = 'https://esm.sh/kokoro-js@1.2.1';
-      // @ts-ignore - loaded dynamically from CDN on web so onnxruntime-node is not in package.json
-      const { KokoroTTS } = await import(/* webpackIgnore: true */ kokoroUrl);
-      console.log('[KokoroTTS] Loading Kokoro-82M-v1.0-ONNX in browser...');
-      return KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
-        dtype: 'q8',
-      });
-    })();
-  }
-  return webTtsPromise;
-}
-
-function getNativeTtsUrl(): string {
-  const custom = process.env.EXPO_PUBLIC_VERCEL_TTS_URL?.trim();
-  if (custom) return custom;
-  return Platform.OS === 'android'
-    ? 'http://10.0.2.2:3001/api/tts'
-    : 'http://localhost:3001/api/tts';
-}
-
 export const edgeTtsService = {
   /**
-   * Synthesizes natural neural speech via Kokoro-82M (af_heart):
-   * - Web: runs 100% in-browser via kokoro-js (WebAssembly/WebGPU)
-   * - Android / iOS: calls the local Kokoro TTS server (or EXPO_PUBLIC_VERCEL_TTS_URL)
+   * Sends text to the Vercel Edge TTS serverless function, downloads the resulting
+   * audio buffer to the local cache directory, and returns the local file URI.
+   *
+   * @param text The conversational reply to speak.
+   * @param voice Optional voice identifier (defaults to lifelike conversational "en-US-JennyNeural").
+   * @returns Local file URI (e.g. file:///.../temp_speech.mp3) or null on failure.
    */
   async generateAndDownloadSpeech(
     text: string,
     voice?: string
   ): Promise<string | null> {
-    const activeVoice = voice && voice !== 'en-US-JennyNeural' ? voice : DEFAULT_KOKORO_VOICE;
+    const ttsUrl = CONFIG.vercelTtsUrl;
+    if (!ttsUrl) {
+      console.warn('[EdgeTTS] EXPO_PUBLIC_VERCEL_TTS_URL is not configured.');
+      return null;
+    }
 
+    const activeVoice = HARDCODED_EDGE_VOICE;
+
+    // Strip emojis so TTS synthesis remains clinical and calming
     const cleanText = text
       .replace(/\p{Extended_Pictographic}/gu, '')
       .replace(/\s+/g, ' ')
@@ -66,28 +56,17 @@ export const edgeTtsService = {
       return null;
     }
 
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      try {
-        const tts = await getWebKokoroTts();
-        const audio = await tts.generate(cleanText, { voice: activeVoice });
-        const blob = audio.toBlob();
-        return URL.createObjectURL(blob);
-      } catch (err) {
-        console.warn('[KokoroTTS] Web synthesis failed:', err);
-        return null;
-      }
-    }
-
-    const ttsUrl = getNativeTtsUrl();
+    // 10-12s timeout to gracefully abort before Vercel serverless functions time out
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
+      console.log(`[EdgeTTS] Requesting neural speech (${activeVoice}): "${cleanText.slice(0, 40)}..."`);
       const response = await fetch(ttsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'audio/wav, audio/mpeg, */*',
+          Accept: 'audio/mpeg, audio/mp3, application/json, */*',
         },
         body: JSON.stringify({
           text: cleanText,
@@ -99,22 +78,56 @@ export const edgeTtsService = {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.warn(`[KokoroTTS] Server returned ${response.status}`);
+        console.warn(`[EdgeTTS] Vercel TTS API returned status ${response.status}: ${response.statusText}`);
         return null;
       }
 
+      const contentType = response.headers.get('content-type') || '';
+
+      // Handle JSON response containing base64 audio payload or audio URL
+      if (contentType.includes('application/json')) {
+        const json = await response.json();
+        if (json.audio) {
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            return `data:audio/mp3;base64,${json.audio}`;
+          }
+          const cacheDir = FileSystem.cacheDirectory || '';
+          const localUri = `${cacheDir}temp_speech.mp3`;
+          await FileSystem.writeAsStringAsync(localUri, json.audio, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          return localUri;
+        }
+        if (json.audioUrl) {
+          return json.audioUrl;
+        }
+      }
+
+      // Handle binary audio buffer (audio/mpeg / audio/mp3 / application/octet-stream)
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      }
+
+      // Mobile native filesystem storage
       const arrayBuffer = await response.arrayBuffer();
       const base64Data = arrayBufferToBase64(arrayBuffer);
-      const localUri = `${FileSystem.cacheDirectory || ''}temp_speech.wav`;
+      const cacheDir = FileSystem.cacheDirectory || '';
+      const localUri = `${cacheDir}temp_speech.mp3`;
 
       await FileSystem.writeAsStringAsync(localUri, base64Data, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
+      console.log(`[EdgeTTS] Successfully cached neural speech to: ${localUri}`);
       return localUri;
     } catch (err: any) {
       clearTimeout(timeoutId);
-      console.warn('[KokoroTTS] Failed to fetch speech audio:', err?.message || err);
+      if (err.name === 'AbortError') {
+        console.warn('[EdgeTTS] Speech generation timed out after 12s.');
+      } else {
+        console.warn('[EdgeTTS] Failed to fetch or download speech audio:', err);
+      }
       return null;
     }
   },
